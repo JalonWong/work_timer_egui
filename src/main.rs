@@ -1,13 +1,15 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 mod left_panel_ui;
+mod setting;
 mod timer;
 
 use eframe::egui::{
     self, Align, Button, CentralPanel, Color32, FontId, Frame, Layout, RichText, Theme, Ui,
-    Visuals, vec2,
+    Visuals, Window, vec2,
 };
 use left_panel_ui::LeftPanel;
+use setting::Setting;
 use std::fs;
 use timer::{Status, Timer};
 
@@ -32,12 +34,12 @@ fn main() -> eframe::Result {
 }
 
 struct MyEguiApp {
-    limit_time: u64,
     total_time: u64,
-    group: String,
     timer: Timer,
     board: TimerBoard,
     left_panel: LeftPanel,
+    setting: Setting,
+    setting_window: SettingWindow,
 }
 
 impl eframe::App for MyEguiApp {
@@ -49,19 +51,14 @@ impl eframe::App for MyEguiApp {
             for btn in btn_status {
                 match btn {
                     0 => self.toggle_theme(ui),
+                    1 => self.setting_window.show(),
                     _ => (),
                 }
             }
 
             CentralPanel::default().show_inside(ui, |ui| {
                 ui.vertical_centered_justified(|ui| {
-                    self.board.ui(
-                        ui,
-                        self.timer.status(),
-                        counter_string,
-                        &self.group,
-                        self.limit_time,
-                    );
+                    self.board.ui(ui, self.timer.status(), counter_string);
 
                     ui.with_layout(
                         Layout::bottom_up(Align::Center).with_cross_justify(true),
@@ -84,6 +81,8 @@ impl eframe::App for MyEguiApp {
                     );
                 });
             });
+
+            self.setting_window.ui(ui, &mut self.setting);
         });
     }
 }
@@ -107,27 +106,42 @@ impl MyEguiApp {
         v.override_text_color = Some(Color32::from_rgb(20, 20, 20));
         cc.egui_ctx.set_visuals_of(Theme::Light, v);
 
+        let mut setting = Setting::new();
+        setting.load();
+        let setting_window = SettingWindow::new(setting.file_name());
+
+        match setting.theme() {
+            setting::Theme::Dark => cc.egui_ctx.set_theme(Theme::Dark),
+            setting::Theme::Light => cc.egui_ctx.set_theme(Theme::Light),
+            setting::Theme::System => (),
+        }
+
         Self {
-            group: "Work".to_string(),
-            limit_time: 25,
             total_time: 0,
             timer: Timer::new(),
             board: TimerBoard::new(),
-            left_panel: LeftPanel::new(110.0, &[("\u{1F313}", "Theme")]),
+            left_panel: LeftPanel::new(110.0, &[("\u{1F313}", "Theme"), ("\u{26ED}", "Setting")]),
+            setting,
+            setting_window,
         }
     }
 
     fn toggle_theme(&mut self, ui: &mut Ui) {
         if ui.visuals().dark_mode {
             ui.ctx().set_theme(Theme::Light);
+            self.setting.set_theme(setting::Theme::Light);
         } else {
             ui.ctx().set_theme(Theme::Dark);
+            self.setting.set_theme(setting::Theme::Dark);
         }
         self.board.refresh_color(ui);
+        self.setting.save();
     }
 
     fn start(&mut self, ui: &mut Ui) {
-        self.timer.start(self.limit_time);
+        let t = &self.setting.timer_list()[0];
+        self.board.set_limit_time(t.limit_time);
+        self.timer.start(t);
         self.board.update(ui, self.timer.status());
     }
 
@@ -156,6 +170,7 @@ impl MyEguiApp {
 struct TimerBoard {
     status: Status,
     frame: Frame,
+    limit_time: u64,
 }
 
 impl TimerBoard {
@@ -166,6 +181,7 @@ impl TimerBoard {
                 .inner_margin(10)
                 .outer_margin(5)
                 .fill(Color32::TRANSPARENT),
+            limit_time: 0,
         }
     }
 
@@ -193,6 +209,10 @@ impl TimerBoard {
         };
     }
 
+    fn set_limit_time(&mut self, limit_time: u64) {
+        self.limit_time = limit_time;
+    }
+
     fn update(&mut self, ui: &mut Ui, status: Status) {
         if status != self.status {
             self.status = status;
@@ -204,23 +224,47 @@ impl TimerBoard {
         }
     }
 
-    fn ui(
-        &mut self,
-        ui: &mut Ui,
-        status: Status,
-        counter_string: String,
-        group: &str,
-        limit_time: u64,
-    ) {
+    fn ui(&mut self, ui: &mut Ui, status: Status, counter_string: String) {
         self.update(ui, status);
         self.frame.show(ui, |ui| {
             ui.vertical_centered(|ui| {
                 ui.add_space((ui.available_height() - 200.0) / 2.0);
-                ui.label(group);
                 ui.label(RichText::new(counter_string).font(FontId::proportional(80.0)));
-                ui.label(format!("Limit {} m", limit_time));
+                ui.label(format!("Limit {} m", self.limit_time));
                 ui.add_space(ui.available_height() - 80.0);
             });
         });
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+struct SettingWindow {
+    file_name: String,
+    show: bool,
+}
+
+impl SettingWindow {
+    fn new(file_name: &str) -> Self {
+        Self {
+            file_name: file_name.to_string(),
+            show: false,
+        }
+    }
+
+    fn show(&mut self) {
+        self.show = true;
+    }
+
+    fn ui(&mut self, ui: &mut Ui, _setting: &mut Setting) {
+        Window::new("Setting")
+            .open(&mut self.show)
+            .resizable(true)
+            .default_width(600.0)
+            .show(ui.ctx(), |ui| {
+                ui.vertical_centered(|ui| {
+                    ui.label(format!("Setting file: {}", &self.file_name));
+                });
+            });
     }
 }
