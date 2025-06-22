@@ -1,10 +1,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
+mod left_panel_ui;
 mod timer;
 
 use eframe::egui::{
-    self, Align, Button, Color32, FontId, Frame, Layout, RichText, Theme, Visuals, vec2,
+    self, Align, Button, CentralPanel, Color32, FontId, Frame, Layout, RichText, Theme, Ui,
+    Visuals, vec2,
 };
+use left_panel_ui::LeftPanel;
 use std::fs;
 use timer::{Status, Timer};
 
@@ -16,7 +19,7 @@ fn main() -> eframe::Result {
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_min_inner_size([320.0, 280.0])
+            .with_min_inner_size([400.0, 300.0])
             .with_icon(icon),
         ..Default::default()
     };
@@ -34,6 +37,7 @@ struct MyEguiApp {
     group: String,
     timer: Timer,
     board: TimerBoard,
+    left_panel: LeftPanel,
 }
 
 impl eframe::App for MyEguiApp {
@@ -41,44 +45,44 @@ impl eframe::App for MyEguiApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             let counter_string = self.timer.update();
 
-            ui.vertical_centered_justified(|ui| {
-                ui.horizontal(|ui| {
-                    if ui.button("Theme").clicked() {
-                        self.toggle_theme(ui);
-                    }
+            let btn_status = self.left_panel.ui(ui);
+            for btn in btn_status {
+                match btn {
+                    0 => self.toggle_theme(ui),
+                    _ => (),
+                }
+            }
+
+            CentralPanel::default().show_inside(ui, |ui| {
+                ui.vertical_centered_justified(|ui| {
+                    self.board.ui(
+                        ui,
+                        self.timer.status(),
+                        counter_string,
+                        &self.group,
+                        self.limit_time,
+                    );
+
+                    ui.with_layout(
+                        Layout::bottom_up(Align::Center).with_cross_justify(true),
+                        |ui| {
+                            ui.label(self.total_string());
+                            ui.separator();
+                            ui.add_space(5.0);
+                            if self.timer.status() == Status::Stopped {
+                                let btn = Button::new("\u{25B6} Start").min_size(vec2(40.0, 40.0));
+                                if ui.add(btn).clicked() {
+                                    self.start(ui);
+                                }
+                            } else {
+                                let btn = Button::new("\u{23F9} Stop").min_size(vec2(40.0, 40.0));
+                                if ui.add(btn).clicked() {
+                                    self.stop(ui);
+                                }
+                            }
+                        },
+                    );
                 });
-
-                self.board.ui(
-                    ui,
-                    self.timer.status(),
-                    counter_string,
-                    &self.group,
-                    self.limit_time,
-                );
-
-                ui.with_layout(
-                    Layout::bottom_up(Align::Center).with_cross_justify(true),
-                    |ui| {
-                        ui.label(self.total_string());
-                        ui.separator();
-                        ui.add_space(5.0);
-                        if self.timer.status() == Status::Stopped {
-                            if ui
-                                .add(Button::new("\u{25B6} Start").min_size(vec2(40.0, 40.0)))
-                                .clicked()
-                            {
-                                self.start(ui);
-                            }
-                        } else {
-                            if ui
-                                .add(Button::new("\u{23F9} Stop").min_size(vec2(40.0, 40.0)))
-                                .clicked()
-                            {
-                                self.stop(ui);
-                            }
-                        }
-                    },
-                );
             });
         });
     }
@@ -109,10 +113,11 @@ impl MyEguiApp {
             total_time: 0,
             timer: Timer::new(),
             board: TimerBoard::new(),
+            left_panel: LeftPanel::new(110.0, &[("\u{1F313}", "Theme")]),
         }
     }
 
-    fn toggle_theme(&mut self, ui: &mut egui::Ui) {
+    fn toggle_theme(&mut self, ui: &mut Ui) {
         if ui.visuals().dark_mode {
             ui.ctx().set_theme(Theme::Light);
         } else {
@@ -121,12 +126,12 @@ impl MyEguiApp {
         self.board.refresh_color(ui);
     }
 
-    fn start(&mut self, ui: &mut egui::Ui) {
+    fn start(&mut self, ui: &mut Ui) {
         self.timer.start(self.limit_time);
         self.board.update(ui, self.timer.status());
     }
 
-    fn stop(&mut self, ui: &mut egui::Ui) {
+    fn stop(&mut self, ui: &mut Ui) {
         self.total_time += self.timer.stop();
         self.board.update(ui, self.timer.status());
     }
@@ -136,12 +141,12 @@ impl MyEguiApp {
         const HOUR_SEC: u64 = 60 * 60;
         if time >= HOUR_SEC {
             format!(
-                "Total working time {} h {} m",
+                "Working Time {} h {} m",
                 time / HOUR_SEC,
                 (time % HOUR_SEC) / 60
             )
         } else {
-            format!("Total working time {} m", time / 60)
+            format!("Working Time {} m", time / 60)
         }
     }
 }
@@ -164,7 +169,7 @@ impl TimerBoard {
         }
     }
 
-    fn get_red(&self, ui: &mut egui::Ui) -> Color32 {
+    fn get_red(&self, ui: &mut Ui) -> Color32 {
         if ui.ctx().theme() == Theme::Dark {
             Color32::from_rgb(140, 50, 50)
         } else {
@@ -172,7 +177,7 @@ impl TimerBoard {
         }
     }
 
-    fn get_green(&self, ui: &mut egui::Ui) -> Color32 {
+    fn get_green(&self, ui: &mut Ui) -> Color32 {
         if ui.ctx().theme() == Theme::Dark {
             Color32::from_rgb(60, 90, 60)
         } else {
@@ -180,7 +185,7 @@ impl TimerBoard {
         }
     }
 
-    fn refresh_color(&mut self, ui: &mut egui::Ui) {
+    fn refresh_color(&mut self, ui: &mut Ui) {
         self.frame.fill = match self.status {
             Status::Stopped => Color32::TRANSPARENT,
             Status::Started => self.get_green(ui),
@@ -188,7 +193,7 @@ impl TimerBoard {
         };
     }
 
-    fn update(&mut self, ui: &mut egui::Ui, status: Status) {
+    fn update(&mut self, ui: &mut Ui, status: Status) {
         if status != self.status {
             self.status = status;
             self.refresh_color(ui);
@@ -201,7 +206,7 @@ impl TimerBoard {
 
     fn ui(
         &mut self,
-        ui: &mut egui::Ui,
+        ui: &mut Ui,
         status: Status,
         counter_string: String,
         group: &str,
