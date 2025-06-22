@@ -1,10 +1,13 @@
 [package]
-name = "egui_demo"
-version = "0.1.0"
-edition = "2024"
+    edition = "2024"
+    name = "work_timer"
+    version = "0.1.0"
+
+[build-dependencies]
+    winres = "0.1"
 
 [dependencies]
-eframe = "0.31"
+    eframe = "0.31"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-env_logger = "0.11.8"
+    env_logger = "0.11.8"

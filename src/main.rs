@@ -5,13 +5,19 @@ mod timer;
 use eframe::egui::{
     self, Align, Button, Color32, FontId, Frame, Layout, RichText, Theme, Visuals, vec2,
 };
+use std::fs;
 use timer::{Status, Timer};
 
 fn main() -> eframe::Result {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
+    let png_bytes = fs::read("image/timer.png").unwrap();
+    let icon = eframe::icon_data::from_png_bytes(&png_bytes).unwrap();
+
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_min_inner_size([320.0, 280.0]),
+        viewport: egui::ViewportBuilder::default()
+            .with_min_inner_size([320.0, 280.0])
+            .with_icon(icon),
         ..Default::default()
     };
 
@@ -168,9 +174,9 @@ impl TimerBoard {
 
     fn get_green(&self, ui: &mut egui::Ui) -> Color32 {
         if ui.ctx().theme() == Theme::Dark {
-            Color32::from_rgb(50, 90, 30)
+            Color32::from_rgb(60, 90, 60)
         } else {
-            Color32::from_rgb(150, 235, 130)
+            Color32::from_rgb(140, 235, 130)
         }
     }
 
