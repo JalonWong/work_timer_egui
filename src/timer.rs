@@ -33,8 +33,12 @@ impl Timer {
 
     pub fn stop(&mut self) -> u64 {
         self.status = Status::Stopped;
-        self.setting.take();
-        self.count
+        if let Some(s) = self.setting.take() {
+            if s.work_type {
+                return self.count
+            }
+        }
+        0
     }
 
     pub fn status(&self) -> Status {
@@ -43,18 +47,28 @@ impl Timer {
 
     pub fn update(&mut self) -> String {
         if let Some(setting) = self.setting.as_ref() {
+            let limit_count = setting.limit_time * 60;
             self.count = Instant::now().duration_since(self.start_time).as_secs();
-            if self.status != Status::TimeOut && self.count >= setting.limit_time * 60 {
+            if self.status != Status::TimeOut && self.count >= limit_count {
                 self.status = Status::TimeOut;
             }
 
-            let count = self.count;
+            let (sign, count) = if setting.count_up {
+                ("", self.count)
+            } else {
+                if self.count <= limit_count {
+                    ("", limit_count - self.count)
+                } else {
+                    ("-", self.count - limit_count)
+                }
+            };
+
             let minutes = count / 60;
             if minutes >= 60 {
                 let hours = minutes / 60;
-                format!("{:02}:{:02}:{:02}", hours, minutes % 60, count % 60)
+                format!("{}{:02}:{:02}:{:02}", sign, hours, minutes % 60, count % 60)
             } else {
-                format!("{:02}:{:02}", minutes, count % 60)
+                format!("{}{:02}:{:02}", sign, minutes, count % 60)
             }
         } else {
             "00:00".to_string()

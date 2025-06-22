@@ -5,7 +5,7 @@ mod setting;
 mod timer;
 
 use eframe::egui::{
-    self, Align, Button, CentralPanel, Color32, FontId, Frame, Layout, RichText, Theme, Ui,
+    self, Align, Button, CentralPanel, Color32, FontId, Frame, Layout, Margin, RichText, Theme, Ui,
     Visuals, Window, vec2,
 };
 use left_panel_ui::LeftPanel;
@@ -67,14 +67,11 @@ impl eframe::App for MyEguiApp {
                             ui.separator();
                             ui.add_space(5.0);
                             if self.timer.status() == Status::Stopped {
-                                let btn = Button::new("\u{25B6} Start").min_size(vec2(40.0, 40.0));
-                                if ui.add(btn).clicked() {
-                                    self.start(ui);
-                                }
+                                self.ui_timer_buttons(ui);
                             } else {
                                 let btn = Button::new("\u{23F9} Stop").min_size(vec2(40.0, 40.0));
                                 if ui.add(btn).clicked() {
-                                    self.stop(ui);
+                                    self.stop();
                                 }
                             }
                         },
@@ -138,16 +135,8 @@ impl MyEguiApp {
         self.setting.save();
     }
 
-    fn start(&mut self, ui: &mut Ui) {
-        let t = &self.setting.timer_list()[0];
-        self.board.set_limit_time(t.limit_time);
-        self.timer.start(t);
-        self.board.update(ui, self.timer.status());
-    }
-
-    fn stop(&mut self, ui: &mut Ui) {
+    fn stop(&mut self) {
         self.total_time += self.timer.stop();
-        self.board.update(ui, self.timer.status());
     }
 
     fn total_string(&self) -> String {
@@ -163,6 +152,33 @@ impl MyEguiApp {
             format!("Working Time {} m", time / 60)
         }
     }
+
+    fn ui_timer_buttons(&mut self, ui: &mut Ui) {
+        let n = self.setting.timer_list().len();
+        let mut frame = Frame::new().inner_margin(0);
+        frame.outer_margin = Margin {
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 20,
+        };
+        frame.show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.columns(n, |columns| {
+                    for (i, t) in self.setting.timer_list().iter().enumerate() {
+                        let text = format!("{} {}", &t.icon, &t.name);
+                        let btn = Button::new(&text).min_size(vec2(40.0, 40.0));
+                        columns[i].vertical_centered_justified(|ui| {
+                            if ui.add(btn).clicked() {
+                                self.board.set_info(text, t.limit_time);
+                                self.timer.start(t);
+                            }
+                        });
+                    }
+                });
+            });
+        });
+    }
 }
 
 // ----------------------------------------------------------------------------
@@ -170,6 +186,7 @@ impl MyEguiApp {
 struct TimerBoard {
     status: Status,
     frame: Frame,
+    name: String,
     limit_time: u64,
 }
 
@@ -181,6 +198,7 @@ impl TimerBoard {
                 .inner_margin(10)
                 .outer_margin(5)
                 .fill(Color32::TRANSPARENT),
+            name: "".to_string(),
             limit_time: 0,
         }
     }
@@ -209,7 +227,8 @@ impl TimerBoard {
         };
     }
 
-    fn set_limit_time(&mut self, limit_time: u64) {
+    fn set_info(&mut self, name: String, limit_time: u64) {
+        self.name = name;
         self.limit_time = limit_time;
     }
 
@@ -229,6 +248,7 @@ impl TimerBoard {
         self.frame.show(ui, |ui| {
             ui.vertical_centered(|ui| {
                 ui.add_space((ui.available_height() - 200.0) / 2.0);
+                ui.label(&self.name);
                 ui.label(RichText::new(counter_string).font(FontId::proportional(80.0)));
                 ui.label(format!("Limit {} m", self.limit_time));
                 ui.add_space(ui.available_height() - 80.0);

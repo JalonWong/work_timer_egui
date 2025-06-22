@@ -24,18 +24,18 @@ impl Setting {
                 theme: Theme::System,
                 timer_list: vec![
                     TimerSetting {
-                        name: "Work".to_string(),
-                        icon: "\u{1F528}".to_string(),
-                        work_type: true,
-                        count_up: true,
-                        limit_time: 25,
-                    },
-                    TimerSetting {
                         name: "Break".to_string(),
                         icon: "\u{2615}".to_string(),
                         work_type: false,
                         count_up: false,
                         limit_time: 5,
+                    },
+                    TimerSetting {
+                        name: "Work".to_string(),
+                        icon: "\u{1F4BB}".to_string(),
+                        work_type: true,
+                        count_up: true,
+                        limit_time: 25,
                     },
                 ],
             },
