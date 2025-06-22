@@ -16,37 +16,52 @@ impl Setting {
             fs::create_dir_all(&file_name).unwrap();
         }
 
-        file_name.push("setting.toml");
+        file_name.push("config.toml");
+
+        let mut need_save = true;
+
+        let mut info = SettingInfo {
+            version: 4,
+            theme: Theme::System,
+            audio_file: "assets/notify.wav".to_string(),
+            play_audio: true,
+            timer_list: vec![
+                TimerSetting {
+                    name: "Break".to_string(),
+                    icon: "\u{2615}".to_string(),
+                    limit_time: 5,
+                    work_type: false,
+                    count_up: false,
+                    notify: true,
+                },
+                TimerSetting {
+                    name: "Work".to_string(),
+                    icon: "\u{1F4BB}".to_string(),
+                    limit_time: 25,
+                    work_type: true,
+                    count_up: true,
+                    notify: false,
+                },
+            ],
+        };
+
+        // Load
+        if file_name.exists() {
+            let toml_str = fs::read_to_string(&file_name).unwrap();
+            if let Ok(i) = toml::from_str(&toml_str) {
+                info = i;
+                need_save = false;
+            }
+        }
+
+        // Save
+        if need_save {
+            fs::write(&file_name, toml::to_string(&info).unwrap()).unwrap();
+        }
 
         Self {
             file_name,
-            info: SettingInfo {
-                theme: Theme::System,
-                timer_list: vec![
-                    TimerSetting {
-                        name: "Break".to_string(),
-                        icon: "\u{2615}".to_string(),
-                        work_type: false,
-                        count_up: false,
-                        limit_time: 5,
-                    },
-                    TimerSetting {
-                        name: "Work".to_string(),
-                        icon: "\u{1F4BB}".to_string(),
-                        work_type: true,
-                        count_up: true,
-                        limit_time: 25,
-                    },
-                ],
-            },
-        }
-    }
-
-    pub fn load(&mut self) {
-        if self.file_name.exists() {
-            self.info = toml::from_str(&fs::read_to_string(&self.file_name).unwrap()).unwrap();
-        } else {
-            self.save();
+            info,
         }
     }
 
@@ -69,11 +84,22 @@ impl Setting {
     pub fn timer_list(&self) -> &[TimerSetting] {
         &self.info.timer_list
     }
+
+    pub fn audio_file(&self) -> Option<&str> {
+        if self.info.play_audio {
+            Some(&self.info.audio_file)
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize)]
 struct SettingInfo {
+    version: u32,
     theme: Theme,
+    play_audio: bool,
+    audio_file: String,
     timer_list: Vec<TimerSetting>,
 }
 
@@ -88,7 +114,14 @@ pub enum Theme {
 pub struct TimerSetting {
     pub name: String,
     pub icon: String,
+    pub limit_time: u64,
     pub work_type: bool,
     pub count_up: bool,
-    pub limit_time: u64,
+    notify: bool,
+}
+
+impl TimerSetting {
+    pub fn notify(&self) -> bool {
+        self.notify
+    }
 }

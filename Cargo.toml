@@ -9,6 +9,7 @@
 [dependencies]
     dirs = "6.0"
     eframe = "0.31"
+    rodio = "0.20"
     serde = { version = "1.0", features = ["derive"] }
     toml = "0.8"
 

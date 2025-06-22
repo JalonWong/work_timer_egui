@@ -1,12 +1,14 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
+mod audio;
 mod left_panel_ui;
 mod setting;
 mod timer;
 
+use audio::Audio;
 use eframe::egui::{
-    self, Align, Button, CentralPanel, Color32, FontId, Frame, Layout, Margin, RichText, Theme, Ui,
-    Visuals, Window, vec2,
+    self, Align, Button, CentralPanel, Color32, FontId, Frame, Layout, RichText, Theme, Ui,
+    ViewportCommand, Visuals, Window, WindowLevel, vec2,
 };
 use left_panel_ui::LeftPanel;
 use setting::Setting;
@@ -16,7 +18,7 @@ use timer::{Status, Timer};
 fn main() -> eframe::Result {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
-    let png_bytes = fs::read("image/timer.png").unwrap();
+    let png_bytes = fs::read("assets/timer.png").unwrap();
     let icon = eframe::icon_data::from_png_bytes(&png_bytes).unwrap();
 
     let options = eframe::NativeOptions {
@@ -40,6 +42,8 @@ struct MyEguiApp {
     left_panel: LeftPanel,
     setting: Setting,
     setting_window: SettingWindow,
+    notify: bool,
+    audio: Audio,
 }
 
 impl eframe::App for MyEguiApp {
@@ -59,24 +63,33 @@ impl eframe::App for MyEguiApp {
             CentralPanel::default().show_inside(ui, |ui| {
                 ui.vertical_centered_justified(|ui| {
                     self.board.ui(ui, self.timer.status(), counter_string);
-
-                    ui.with_layout(
-                        Layout::bottom_up(Align::Center).with_cross_justify(true),
-                        |ui| {
-                            ui.label(self.total_string());
-                            ui.separator();
-                            ui.add_space(5.0);
-                            if self.timer.status() == Status::Stopped {
-                                self.ui_timer_buttons(ui);
-                            } else {
-                                let btn = Button::new("\u{23F9} Stop").min_size(vec2(40.0, 40.0));
-                                if ui.add(btn).clicked() {
-                                    self.stop();
-                                }
-                            }
-                        },
-                    );
+                    if self.board.timeout && self.notify {
+                        ui.ctx()
+                            .send_viewport_cmd(ViewportCommand::Minimized(false));
+                        ui.ctx().send_viewport_cmd(ViewportCommand::WindowLevel(
+                            WindowLevel::AlwaysOnTop,
+                        ));
+                        self.audio.play_notify(self.setting.audio_file());
+                        ui.ctx()
+                            .send_viewport_cmd(ViewportCommand::WindowLevel(WindowLevel::Normal));
+                    }
                 });
+                ui.with_layout(
+                    Layout::bottom_up(Align::Center).with_cross_justify(true),
+                    |ui| {
+                        ui.label(self.total_string());
+                        ui.separator();
+                        ui.add_space(5.0);
+                        if self.timer.status() == Status::Stopped {
+                            self.ui_timer_buttons(ui);
+                        } else {
+                            let btn = Button::new("\u{23F9} Stop").min_size(vec2(40.0, 40.0));
+                            if ui.add(btn).clicked() {
+                                self.stop();
+                            }
+                        }
+                    },
+                );
             });
 
             self.setting_window.ui(ui, &mut self.setting);
@@ -103,8 +116,7 @@ impl MyEguiApp {
         v.override_text_color = Some(Color32::from_rgb(20, 20, 20));
         cc.egui_ctx.set_visuals_of(Theme::Light, v);
 
-        let mut setting = Setting::new();
-        setting.load();
+        let setting = Setting::new();
         let setting_window = SettingWindow::new(setting.file_name());
 
         match setting.theme() {
@@ -120,6 +132,8 @@ impl MyEguiApp {
             left_panel: LeftPanel::new(110.0, &[("\u{1F313}", "Theme"), ("\u{26ED}", "Setting")]),
             setting,
             setting_window,
+            notify: false,
+            audio: Audio::new(),
         }
     }
 
@@ -155,27 +169,20 @@ impl MyEguiApp {
 
     fn ui_timer_buttons(&mut self, ui: &mut Ui) {
         let n = self.setting.timer_list().len();
-        let mut frame = Frame::new().inner_margin(0);
-        frame.outer_margin = Margin {
-            left: 0,
-            right: 0,
-            top: 0,
-            bottom: 20,
-        };
-        frame.show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.columns(n, |columns| {
-                    for (i, t) in self.setting.timer_list().iter().enumerate() {
-                        let text = format!("{} {}", &t.icon, &t.name);
-                        let btn = Button::new(&text).min_size(vec2(40.0, 40.0));
-                        columns[i].vertical_centered_justified(|ui| {
-                            if ui.add(btn).clicked() {
-                                self.board.set_info(text, t.limit_time);
-                                self.timer.start(t);
-                            }
-                        });
-                    }
-                });
+        ui.add_space(20.0);
+        ui.horizontal(|ui| {
+            ui.columns(n, |columns| {
+                for (i, t) in self.setting.timer_list().iter().enumerate() {
+                    let text = format!("{} {}", &t.icon, &t.name);
+                    let btn = Button::new(&text).min_size(vec2(40.0, 40.0));
+                    columns[i].vertical_centered_justified(|ui| {
+                        if ui.add(btn).clicked() {
+                            self.notify = t.notify();
+                            self.board.set_info(text, t.limit_time);
+                            self.timer.start(t);
+                        }
+                    });
+                }
             });
         });
     }
@@ -188,6 +195,7 @@ struct TimerBoard {
     frame: Frame,
     name: String,
     limit_time: u64,
+    timeout: bool,
 }
 
 impl TimerBoard {
@@ -200,6 +208,7 @@ impl TimerBoard {
                 .fill(Color32::TRANSPARENT),
             name: "".to_string(),
             limit_time: 0,
+            timeout: false,
         }
     }
 
@@ -230,12 +239,18 @@ impl TimerBoard {
     fn set_info(&mut self, name: String, limit_time: u64) {
         self.name = name;
         self.limit_time = limit_time;
+        self.timeout = false;
     }
 
     fn update(&mut self, ui: &mut Ui, status: Status) {
         if status != self.status {
             self.status = status;
             self.refresh_color(ui);
+            if status == Status::TimeOut {
+                self.timeout = true;
+            }
+        } else {
+            self.timeout = false;
         }
 
         if status != Status::Stopped {
@@ -247,7 +262,7 @@ impl TimerBoard {
         self.update(ui, status);
         self.frame.show(ui, |ui| {
             ui.vertical_centered(|ui| {
-                ui.add_space((ui.available_height() - 200.0) / 2.0);
+                ui.add_space(ui.available_height() / 2.0 - 105.0);
                 ui.label(&self.name);
                 ui.label(RichText::new(counter_string).font(FontId::proportional(80.0)));
                 ui.label(format!("Limit {} m", self.limit_time));
@@ -282,8 +297,10 @@ impl SettingWindow {
             .resizable(true)
             .default_width(600.0)
             .show(ui.ctx(), |ui| {
-                ui.vertical_centered(|ui| {
-                    ui.label(format!("Setting file: {}", &self.file_name));
+                egui::Grid::new("my_grid").striped(true).show(ui, |ui| {
+                    ui.label("Edit file:");
+                    ui.label(&self.file_name);
+                    ui.end_row();
                 });
             });
     }

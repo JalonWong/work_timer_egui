@@ -12,4 +12,4 @@ A work timer powered by [egui](https://github.com/emilk/egui).
 - It supports both dark and light themes.
 
 
-![screenshot](image/screenshot.png)
+![screenshot](misc/screenshot.png)
