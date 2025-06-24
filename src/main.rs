@@ -44,12 +44,22 @@ struct MyEguiApp {
     setting_window: SettingWindow,
     notify: bool,
     audio: Audio,
+    on_top: bool,
 }
 
 impl eframe::App for MyEguiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             let (is_timeout, counter_string) = self.timer.update();
+
+            if is_timeout && self.notify {
+                ctx.send_viewport_cmd(ViewportCommand::Minimized(false));
+                ctx.send_viewport_cmd(ViewportCommand::WindowLevel(WindowLevel::AlwaysOnTop));
+                self.on_top = true;
+            } else if self.on_top {
+                ctx.send_viewport_cmd(ViewportCommand::WindowLevel(WindowLevel::Normal));
+                self.on_top = false;
+            }
 
             let btn_status = self.left_panel.ui(ui);
             for btn in btn_status {
@@ -58,16 +68,6 @@ impl eframe::App for MyEguiApp {
                     1 => self.setting_window.show(),
                     _ => (),
                 }
-            }
-
-            if is_timeout && self.notify {
-                ui.ctx()
-                    .send_viewport_cmd(ViewportCommand::Minimized(false));
-                ui.ctx()
-                    .send_viewport_cmd(ViewportCommand::WindowLevel(WindowLevel::AlwaysOnTop));
-                self.audio.play_notify(self.setting.audio_file());
-                ui.ctx()
-                    .send_viewport_cmd(ViewportCommand::WindowLevel(WindowLevel::Normal));
             }
 
             CentralPanel::default().show_inside(ui, |ui| {
@@ -126,6 +126,7 @@ impl MyEguiApp {
             setting_window,
             notify: false,
             audio: Audio::new(),
+            on_top: false,
         }
     }
 
@@ -170,6 +171,7 @@ impl MyEguiApp {
                         };
                         let btn = Button::new(&text).min_size(vec2(40.0, 40.0));
                         if ui.add(btn).clicked() {
+                            self.audio.cancel_notify();
                             if self.timer.status() != Status::Stopped {
                                 // Stop
                                 self.total_time += self.timer.stop();
@@ -179,6 +181,11 @@ impl MyEguiApp {
                                 self.notify = t.notify();
                                 self.board.set_info(text, t.limit_time);
                                 self.timer.start(t);
+                                if t.notify() {
+                                    if let Some(name) = self.setting.audio_file() {
+                                        self.audio.schedule_notify(name, t.limit_time * 60);
+                                    }
+                                }
                             }
                         }
                     });
