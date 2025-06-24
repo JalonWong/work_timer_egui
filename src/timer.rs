@@ -53,12 +53,14 @@ impl Timer {
         self.status
     }
 
-    pub fn update(&mut self) -> String {
-        if let Some(setting) = self.setting.as_ref() {
+    pub fn update(&mut self) -> (bool, String) {
+        let mut is_timeout = false;
+        let counter_string = if let Some(setting) = self.setting.as_ref() {
             let limit_count = setting.limit_time * 60;
-            self.count = Instant::now().duration_since(self.start_time).as_secs();
+            self.count = self.start_time.elapsed().as_secs();
             if self.status != Status::TimeOut && self.count >= limit_count {
                 self.status = Status::TimeOut;
+                is_timeout = true;
             }
 
             let (sign, count) = if setting.count_up {
@@ -80,6 +82,7 @@ impl Timer {
             }
         } else {
             "00:00".to_string()
-        }
+        };
+        (is_timeout, counter_string)
     }
 }

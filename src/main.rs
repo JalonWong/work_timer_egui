@@ -49,7 +49,7 @@ struct MyEguiApp {
 impl eframe::App for MyEguiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            let counter_string = self.timer.update();
+            let (is_timeout, counter_string) = self.timer.update();
 
             let btn_status = self.left_panel.ui(ui);
             for btn in btn_status {
@@ -60,19 +60,19 @@ impl eframe::App for MyEguiApp {
                 }
             }
 
+            if is_timeout && self.notify {
+                ui.ctx()
+                    .send_viewport_cmd(ViewportCommand::Minimized(false));
+                ui.ctx()
+                    .send_viewport_cmd(ViewportCommand::WindowLevel(WindowLevel::AlwaysOnTop));
+                self.audio.play_notify(self.setting.audio_file());
+                ui.ctx()
+                    .send_viewport_cmd(ViewportCommand::WindowLevel(WindowLevel::Normal));
+            }
+
             CentralPanel::default().show_inside(ui, |ui| {
                 ui.vertical_centered_justified(|ui| {
                     self.board.ui(ui, self.timer.status(), counter_string);
-                    if self.board.timeout && self.notify {
-                        ui.ctx()
-                            .send_viewport_cmd(ViewportCommand::Minimized(false));
-                        ui.ctx().send_viewport_cmd(ViewportCommand::WindowLevel(
-                            WindowLevel::AlwaysOnTop,
-                        ));
-                        self.audio.play_notify(self.setting.audio_file());
-                        ui.ctx()
-                            .send_viewport_cmd(ViewportCommand::WindowLevel(WindowLevel::Normal));
-                    }
                 });
                 ui.with_layout(
                     Layout::bottom_up(Align::Center).with_cross_justify(true),
@@ -195,7 +195,6 @@ struct TimerBoard {
     frame: Frame,
     name: String,
     limit_time: u64,
-    timeout: bool,
 }
 
 impl TimerBoard {
@@ -208,7 +207,6 @@ impl TimerBoard {
                 .fill(Color32::TRANSPARENT),
             name: "".to_string(),
             limit_time: 0,
-            timeout: false,
         }
     }
 
@@ -239,18 +237,12 @@ impl TimerBoard {
     fn set_info(&mut self, name: String, limit_time: u64) {
         self.name = name;
         self.limit_time = limit_time;
-        self.timeout = false;
     }
 
     fn update(&mut self, ui: &mut Ui, status: Status) {
         if status != self.status {
             self.status = status;
             self.refresh_color(ui);
-            if status == Status::TimeOut {
-                self.timeout = true;
-            }
-        } else {
-            self.timeout = false;
         }
 
         if status != Status::Stopped {
