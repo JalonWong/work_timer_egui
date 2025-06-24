@@ -41,6 +41,14 @@ impl Timer {
         0
     }
 
+    pub fn current_name(&self) -> Option<&str> {
+        if let Some(s) = self.setting.as_ref() {
+            Some(&s.name)
+        } else {
+            None
+        }
+    }
+
     pub fn status(&self) -> Status {
         self.status
     }

@@ -79,15 +79,7 @@ impl eframe::App for MyEguiApp {
                     |ui| {
                         ui.label(self.total_string());
                         ui.separator();
-                        ui.add_space(5.0);
-                        if self.timer.status() == Status::Stopped {
-                            self.ui_timer_buttons(ui);
-                        } else {
-                            let btn = Button::new("\u{23F9} Stop").min_size(vec2(40.0, 40.0));
-                            if ui.add(btn).clicked() {
-                                self.stop();
-                            }
-                        }
+                        self.timer_buttons_ui(ui);
                     },
                 );
             });
@@ -149,10 +141,6 @@ impl MyEguiApp {
         self.setting.save();
     }
 
-    fn stop(&mut self) {
-        self.total_time += self.timer.stop();
-    }
-
     fn total_string(&self) -> String {
         let time = self.total_time;
         const HOUR_SEC: u64 = 60 * 60;
@@ -167,19 +155,31 @@ impl MyEguiApp {
         }
     }
 
-    fn ui_timer_buttons(&mut self, ui: &mut Ui) {
+    fn timer_buttons_ui(&mut self, ui: &mut Ui) {
         let n = self.setting.timer_list().len();
-        ui.add_space(20.0);
+        ui.add_space(25.0);
         ui.horizontal(|ui| {
             ui.columns(n, |columns| {
                 for (i, t) in self.setting.timer_list().iter().enumerate() {
-                    let text = format!("{} {}", &t.icon, &t.name);
-                    let btn = Button::new(&text).min_size(vec2(40.0, 40.0));
                     columns[i].vertical_centered_justified(|ui| {
+                        let the_same = self.timer.current_name() == Some(&t.name);
+                        let text = if the_same {
+                            "\u{23F9} Stop".to_string()
+                        } else {
+                            format!("{} {}", &t.icon, &t.name)
+                        };
+                        let btn = Button::new(&text).min_size(vec2(40.0, 40.0));
                         if ui.add(btn).clicked() {
-                            self.notify = t.notify();
-                            self.board.set_info(text, t.limit_time);
-                            self.timer.start(t);
+                            if self.timer.status() != Status::Stopped {
+                                // Stop
+                                self.total_time += self.timer.stop();
+                            }
+                            if !the_same {
+                                // Start
+                                self.notify = t.notify();
+                                self.board.set_info(text, t.limit_time);
+                                self.timer.start(t);
+                            }
                         }
                     });
                 }
