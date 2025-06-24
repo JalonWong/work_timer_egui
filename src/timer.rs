@@ -34,7 +34,7 @@ impl Timer {
     pub fn stop(&mut self) -> u64 {
         self.status = Status::Stopped;
         if let Some(s) = self.setting.take() {
-            if s.work_type {
+            if s.for_work {
                 return self.count
             }
         }

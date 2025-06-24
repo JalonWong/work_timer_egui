@@ -7,8 +7,8 @@ mod timer;
 
 use audio::Audio;
 use eframe::egui::{
-    self, Align, Button, CentralPanel, Color32, FontId, Frame, Layout, RichText, Theme, Ui,
-    ViewportCommand, Visuals, Window, WindowLevel, vec2,
+    self, Align, Button, CentralPanel, Color32, Context, FontId, Frame, Layout, RichText, Theme,
+    Ui, ViewportCommand, Visuals, Window, WindowLevel, pos2, vec2,
 };
 use left_panel_ui::LeftPanel;
 use setting::Setting;
@@ -18,20 +18,30 @@ use timer::{Status, Timer};
 fn main() -> eframe::Result {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
+    let setting = Setting::new();
+
     let png_bytes = fs::read("assets/timer.png").unwrap();
     let icon = eframe::icon_data::from_png_bytes(&png_bytes).unwrap();
+    let mut viewport = egui::ViewportBuilder::default()
+        .with_min_inner_size([400.0, 300.0])
+        .with_icon(icon)
+        .with_maximized(setting.window_maximized());
+
+    if let Some(info) = setting.window_info() {
+        viewport = viewport
+            .with_position(pos2(info.x, info.y))
+            .with_inner_size(vec2(info.width, info.height));
+    }
 
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_min_inner_size([400.0, 300.0])
-            .with_icon(icon),
+        viewport,
         ..Default::default()
     };
 
     eframe::run_native(
         "Work Timer",
         options,
-        Box::new(|cc| Ok(Box::new(MyEguiApp::new(cc)))),
+        Box::new(|cc| Ok(Box::new(MyEguiApp::new(cc, setting)))),
     )
 }
 
@@ -83,16 +93,19 @@ impl eframe::App for MyEguiApp {
             });
 
             self.setting_window.ui(ui, &mut self.setting);
+
+            Self::save_window_info(ctx, &mut self.setting);
         });
     }
 }
 
 impl MyEguiApp {
-    fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    fn new(cc: &eframe::CreationContext<'_>, setting: Setting) -> Self {
         // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
         // Restore app state using cc.storage (requires the "persistence" feature).
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
         // for e.g. egui::PaintCallback.
+
         let mut style = egui::Style::default();
         style.override_font_id = Some(egui::FontId::proportional(15.0));
         cc.egui_ctx.set_style_of(Theme::Dark, style.clone());
@@ -106,7 +119,6 @@ impl MyEguiApp {
         v.override_text_color = Some(Color32::from_rgb(20, 20, 20));
         cc.egui_ctx.set_visuals_of(Theme::Light, v);
 
-        let setting = Setting::new();
         let setting_window = SettingWindow::new(setting.file_name());
 
         match setting.theme() {
@@ -138,6 +150,31 @@ impl MyEguiApp {
         }
         self.board.refresh_color(ui);
         self.setting.save();
+    }
+
+    fn save_window_info(ctx: &Context, setting: &mut Setting) {
+        // Save window info
+        if ctx.input(|i| i.viewport().close_requested()) {
+            ctx.viewport(|v| {
+                if v.input.viewport().maximized.unwrap_or(false) {
+                    setting.set_window_maximized(true);
+                } else {
+                    setting.set_window_maximized(false);
+                    match (v.input.viewport().inner_rect, v.input.viewport().outer_rect) {
+                        (Some(inner), Some(outer)) => {
+                            setting.set_window_info(setting::WindowInfo {
+                                x: outer.left(),
+                                y: outer.top(),
+                                width: inner.width(),
+                                height: inner.height(),
+                            });
+                        }
+                        _ => (),
+                    }
+                }
+            });
+            setting.save_cache();
+        }
     }
 
     fn total_string(&self) -> String {
@@ -258,7 +295,7 @@ impl TimerBoard {
     fn ui(&mut self, ui: &mut Ui, status: Status, counter_string: String) {
         self.update(ui, status);
         self.frame.show(ui, |ui| {
-            ui.add_space(ui.available_height() / 2.0 - 67.0);
+            ui.add_space(ui.available_height() / 2.0 - 68.0);
             ui.label(format!("Limit {} m", self.limit_time));
             ui.label(RichText::new(counter_string).font(FontId::proportional(80.0)));
             ui.label(&self.name);

@@ -1,9 +1,14 @@
 use dirs;
 use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 use toml;
 
 pub struct Setting {
+    cache_name: PathBuf,
+    cache_info: CacheInfo,
     file_name: PathBuf,
     info: SettingInfo,
 }
@@ -16,8 +21,23 @@ impl Setting {
             fs::create_dir_all(&file_name).unwrap();
         }
 
+        let mut cache_name = file_name.clone();
+        cache_name.push("cache.toml");
+
         file_name.push("config.toml");
 
+        let info = Self::load_setting(&file_name);
+        let cache_info = Self::load_cache(&cache_name);
+
+        Self {
+            cache_name,
+            cache_info,
+            file_name,
+            info,
+        }
+    }
+
+    fn load_setting(file_name: &Path) -> SettingInfo {
         let mut need_save = true;
 
         let mut info = SettingInfo {
@@ -30,7 +50,7 @@ impl Setting {
                     name: "Break".to_string(),
                     icon: "\u{2615}".to_string(),
                     limit_time: 5,
-                    work_type: false,
+                    for_work: false,
                     count_up: false,
                     notify: true,
                 },
@@ -38,7 +58,7 @@ impl Setting {
                     name: "Work".to_string(),
                     icon: "\u{1F4BB}".to_string(),
                     limit_time: 25,
-                    work_type: true,
+                    for_work: true,
                     count_up: true,
                     notify: false,
                 },
@@ -47,7 +67,7 @@ impl Setting {
 
         // Load
         if file_name.exists() {
-            let toml_str = fs::read_to_string(&file_name).unwrap();
+            let toml_str = fs::read_to_string(file_name).unwrap();
             if let Ok(i) = toml::from_str(&toml_str) {
                 info = i;
                 need_save = false;
@@ -58,15 +78,46 @@ impl Setting {
         if need_save {
             fs::write(&file_name, toml::to_string(&info).unwrap()).unwrap();
         }
+        info
+    }
 
-        Self {
-            file_name,
-            info,
+    fn load_cache(file_name: &Path) -> CacheInfo {
+        let mut info = CacheInfo {
+            maximized: false,
+            window: None,
+        };
+
+        if file_name.exists() {
+            let toml_str = fs::read_to_string(file_name).unwrap();
+            if let Ok(i) = toml::from_str(&toml_str) {
+                info = i;
+            }
         }
+        info
     }
 
     pub fn save(&self) {
         fs::write(&self.file_name, toml::to_string(&self.info).unwrap()).unwrap();
+    }
+
+    pub fn save_cache(&self) {
+        fs::write(&self.cache_name, toml::to_string(&self.cache_info).unwrap()).unwrap();
+    }
+
+    pub fn window_info(&self) -> Option<&WindowInfo> {
+        self.cache_info.window.as_ref()
+    }
+
+    pub fn set_window_info(&mut self, info: WindowInfo) {
+        self.cache_info.window = Some(info);
+    }
+
+    pub fn window_maximized(&self) -> bool {
+        self.cache_info.maximized
+    }
+
+    pub fn set_window_maximized(&mut self, maximized: bool) {
+        self.cache_info.maximized = maximized;
     }
 
     pub fn file_name(&self) -> &str {
@@ -94,6 +145,24 @@ impl Setting {
     }
 }
 
+// ----------------------------------------------------------------------------
+
+#[derive(Deserialize, Serialize)]
+struct CacheInfo {
+    maximized: bool,
+    window: Option<WindowInfo>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct WindowInfo {
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+}
+
+// ----------------------------------------------------------------------------
+
 #[derive(Deserialize, Serialize)]
 struct SettingInfo {
     version: u32,
@@ -115,7 +184,7 @@ pub struct TimerSetting {
     pub name: String,
     pub icon: String,
     pub limit_time: u64,
-    pub work_type: bool,
+    pub for_work: bool,
     pub count_up: bool,
     notify: bool,
 }
