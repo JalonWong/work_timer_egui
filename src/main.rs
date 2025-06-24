@@ -71,15 +71,13 @@ impl eframe::App for MyEguiApp {
             }
 
             CentralPanel::default().show_inside(ui, |ui| {
-                ui.vertical_centered_justified(|ui| {
-                    self.board.ui(ui, self.timer.status(), counter_string);
-                });
                 ui.with_layout(
                     Layout::bottom_up(Align::Center).with_cross_justify(true),
                     |ui| {
                         ui.label(self.total_string());
                         ui.separator();
                         self.timer_buttons_ui(ui);
+                        self.board.ui(ui, self.timer.status(), counter_string);
                     },
                 );
             });
@@ -260,13 +258,11 @@ impl TimerBoard {
     fn ui(&mut self, ui: &mut Ui, status: Status, counter_string: String) {
         self.update(ui, status);
         self.frame.show(ui, |ui| {
-            ui.vertical_centered(|ui| {
-                ui.add_space(ui.available_height() / 2.0 - 105.0);
-                ui.label(&self.name);
-                ui.label(RichText::new(counter_string).font(FontId::proportional(80.0)));
-                ui.label(format!("Limit {} m", self.limit_time));
-                ui.add_space(ui.available_height() - 80.0);
-            });
+            ui.add_space(ui.available_height() / 2.0 - 67.0);
+            ui.label(format!("Limit {} m", self.limit_time));
+            ui.label(RichText::new(counter_string).font(FontId::proportional(80.0)));
+            ui.label(&self.name);
+            ui.add_space(ui.available_height());
         });
     }
 }
