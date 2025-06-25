@@ -3,15 +3,17 @@
 mod audio;
 mod left_panel_ui;
 mod setting;
+mod setting_ui;
 mod timer;
 
 use audio::Audio;
 use eframe::egui::{
     self, Align, Button, CentralPanel, Color32, Context, FontId, Frame, Layout, RichText, Theme,
-    Ui, ViewportCommand, Visuals, Window, WindowLevel, pos2, vec2,
+    Ui, ViewportCommand, Visuals, WindowLevel, pos2, vec2,
 };
 use left_panel_ui::LeftPanel;
 use setting::Setting;
+use setting_ui::SettingWindow;
 use std::fs;
 use timer::{Status, Timer};
 
@@ -48,7 +50,7 @@ fn main() -> eframe::Result {
 struct MyEguiApp {
     total_time: u64,
     timer: Timer,
-    board: TimerBoard,
+    timer_panel: TimerPanel,
     left_panel: LeftPanel,
     setting: Setting,
     setting_window: SettingWindow,
@@ -61,6 +63,10 @@ impl eframe::App for MyEguiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             let (is_timeout, counter_string) = self.timer.update();
+
+            if self.timer.status() != Status::Stopped {
+                ctx.request_repaint_after_secs(0.2);
+            }
 
             if is_timeout && self.notify {
                 ctx.send_viewport_cmd(ViewportCommand::Minimized(false));
@@ -87,7 +93,7 @@ impl eframe::App for MyEguiApp {
                         ui.label(self.total_string());
                         ui.separator();
                         self.timer_buttons_ui(ui);
-                        self.board.ui(ui, self.timer.status(), counter_string);
+                        self.timer_panel.ui(ui, self.timer.status(), counter_string);
                     },
                 );
             });
@@ -130,7 +136,7 @@ impl MyEguiApp {
         Self {
             total_time: 0,
             timer: Timer::new(),
-            board: TimerBoard::new(),
+            timer_panel: TimerPanel::new(),
             left_panel: LeftPanel::new(110.0, &[("\u{1F313}", "Theme"), ("\u{26ED}", "Setting")]),
             setting,
             setting_window,
@@ -148,7 +154,7 @@ impl MyEguiApp {
             ui.ctx().set_theme(Theme::Dark);
             self.setting.set_theme(setting::Theme::Dark);
         }
-        self.board.refresh_color(ui);
+        self.timer_panel.change_color(ui);
         self.setting.save();
     }
 
@@ -214,7 +220,7 @@ impl MyEguiApp {
                             if !the_same {
                                 // Start
                                 self.notify = t.notify();
-                                self.board.set_info(text, t.limit_time);
+                                self.timer_panel.set_info(text, t.limit_time);
                                 self.timer.start(t);
                                 if t.notify() {
                                     if let Some(name) = self.setting.audio_file() {
@@ -232,14 +238,14 @@ impl MyEguiApp {
 
 // ----------------------------------------------------------------------------
 
-struct TimerBoard {
+struct TimerPanel {
     status: Status,
     frame: Frame,
     name: String,
     limit_time: u64,
 }
 
-impl TimerBoard {
+impl TimerPanel {
     fn new() -> Self {
         Self {
             status: Status::Stopped,
@@ -268,7 +274,7 @@ impl TimerBoard {
         }
     }
 
-    fn refresh_color(&mut self, ui: &mut Ui) {
+    fn change_color(&mut self, ui: &mut Ui) {
         self.frame.fill = match self.status {
             Status::Stopped => Color32::TRANSPARENT,
             Status::Started => self.get_green(ui),
@@ -284,11 +290,7 @@ impl TimerBoard {
     fn update(&mut self, ui: &mut Ui, status: Status) {
         if status != self.status {
             self.status = status;
-            self.refresh_color(ui);
-        }
-
-        if status != Status::Stopped {
-            ui.ctx().request_repaint_after_secs(0.2);
+            self.change_color(ui);
         }
     }
 
@@ -301,39 +303,5 @@ impl TimerBoard {
             ui.label(&self.name);
             ui.add_space(ui.available_height());
         });
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-struct SettingWindow {
-    file_name: String,
-    show: bool,
-}
-
-impl SettingWindow {
-    fn new(file_name: &str) -> Self {
-        Self {
-            file_name: file_name.to_string(),
-            show: false,
-        }
-    }
-
-    fn show(&mut self) {
-        self.show = true;
-    }
-
-    fn ui(&mut self, ui: &mut Ui, _setting: &mut Setting) {
-        Window::new("Setting")
-            .open(&mut self.show)
-            .resizable(true)
-            .default_width(600.0)
-            .show(ui.ctx(), |ui| {
-                egui::Grid::new("my_grid").striped(true).show(ui, |ui| {
-                    ui.label("Edit file:");
-                    ui.label(&self.file_name);
-                    ui.end_row();
-                });
-            });
     }
 }

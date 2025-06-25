@@ -120,8 +120,8 @@ impl Setting {
         self.cache_info.maximized = maximized;
     }
 
-    pub fn file_name(&self) -> &str {
-        self.file_name.to_str().unwrap()
+    pub fn file_name(&self) -> &Path {
+        &self.file_name
     }
 
     pub fn theme(&self) -> Theme {
