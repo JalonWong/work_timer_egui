@@ -10,8 +10,8 @@ mod timer;
 use audio::Audio;
 use chrono::prelude::*;
 use eframe::egui::{
-    self, Align, Button, CentralPanel, Color32, Context, FontId, Frame, Layout, RichText, Theme,
-    Ui, ViewportCommand, Visuals, WindowLevel, pos2, vec2,
+    self, Align, Button, CentralPanel, Color32, ComboBox, Context, FontId, Frame, Layout, RichText,
+    Theme, Ui, ViewportCommand, Visuals, WindowLevel, pos2, vec2,
 };
 use history::History;
 use left_panel_ui::LeftPanel;
@@ -23,6 +23,8 @@ use std::{
 };
 use timer::{Status, Timer};
 
+use crate::setting::TimerSetting;
+
 fn main() -> eframe::Result {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
@@ -31,7 +33,7 @@ fn main() -> eframe::Result {
     let png_bytes = fs::read("assets/timer.png").unwrap();
     let icon = eframe::icon_data::from_png_bytes(&png_bytes).unwrap();
     let mut viewport = egui::ViewportBuilder::default()
-        .with_min_inner_size([400.0, 300.0])
+        .with_min_inner_size([400.0, 330.0])
         .with_icon(icon)
         .with_maximized(setting.window_maximized());
 
@@ -54,36 +56,15 @@ fn main() -> eframe::Result {
 }
 
 struct MyEguiApp {
-    total_time: u64,
-    timer: Timer,
-    timer_panel: TimerPanel,
+    main_panel: MainPanel,
     left_panel: LeftPanel,
     setting: Setting,
     setting_window: SettingWindow,
-    notify: bool,
-    audio: Audio,
-    on_top: bool,
-    history: History,
 }
 
 impl eframe::App for MyEguiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            let (is_timeout, counter_string) = self.timer.update();
-
-            if self.timer.status() != Status::Stopped {
-                ctx.request_repaint_after_secs(0.2);
-            }
-
-            if is_timeout && self.notify {
-                ctx.send_viewport_cmd(ViewportCommand::Minimized(false));
-                ctx.send_viewport_cmd(ViewportCommand::WindowLevel(WindowLevel::AlwaysOnTop));
-                self.on_top = true;
-            } else if self.on_top {
-                ctx.send_viewport_cmd(ViewportCommand::WindowLevel(WindowLevel::Normal));
-                self.on_top = false;
-            }
-
             let btn_status = self.left_panel.ui(ui);
             for btn in btn_status {
                 match btn {
@@ -93,21 +74,11 @@ impl eframe::App for MyEguiApp {
                 }
             }
 
-            CentralPanel::default().show_inside(ui, |ui| {
-                ui.with_layout(
-                    Layout::bottom_up(Align::Center).with_cross_justify(true),
-                    |ui| {
-                        ui.label(self.total_string());
-                        ui.separator();
-                        self.timer_buttons_ui(ui);
-                        self.timer_panel.ui(ui, self.timer.status(), counter_string);
-                    },
-                );
-            });
-
+            self.main_panel.ui(ctx, ui, &self.setting);
             self.setting_window.ui(ui, &mut self.setting);
-
-            Self::save_window_info(ctx, &mut self.setting, &self.history);
+            if ctx.input(|i| i.viewport().close_requested()) {
+                self.on_close(ctx);
+            }
         });
     }
 }
@@ -143,16 +114,10 @@ impl MyEguiApp {
         let history = History::new();
 
         Self {
-            total_time: Self::init_total_time(&history),
-            timer: Timer::new(),
-            timer_panel: TimerPanel::new(),
+            main_panel: MainPanel::new(history),
             left_panel: LeftPanel::new(110.0, &[("\u{1F313}", "Theme"), ("\u{26ED}", "Setting")]),
             setting,
             setting_window,
-            notify: false,
-            audio: Audio::new(),
-            on_top: false,
-            history,
         }
     }
 
@@ -164,47 +129,144 @@ impl MyEguiApp {
             ui.ctx().set_theme(Theme::Dark);
             self.setting.set_theme(setting::Theme::Dark);
         }
-        self.timer_panel.change_color(ui);
+        self.main_panel.timer_panel.change_color(ui);
         self.setting.save();
     }
 
-    fn init_total_time(history: &History) -> u64 {
-        let local: DateTime<Local> = Local::now();
-        let target_hour = (local.hour() + 24 - 3) % 24; // minus 3 am
-        let end = SystemTime::now();
-        let start = end
-            .checked_sub(Duration::from_secs(target_hour as u64 * 60 * 60))
-            .unwrap();
-        history
-            .get_records(&start, &end)
-            .iter()
-            .map(|r| r.duration)
-            .sum()
+    fn on_close(&mut self, ctx: &Context) {
+        self.main_panel
+            .stop(&self.setting.tags()[self.main_panel.tag_index]);
+
+        // Save window info
+        ctx.viewport(|v| {
+            if v.input.viewport().maximized.unwrap_or(false) {
+                self.setting.set_window_maximized(true);
+            } else {
+                self.setting.set_window_maximized(false);
+                match (v.input.viewport().inner_rect, v.input.viewport().outer_rect) {
+                    (Some(inner), Some(outer)) => {
+                        self.setting.set_window_info(setting::WindowInfo {
+                            x: outer.left(),
+                            y: outer.top(),
+                            width: inner.width(),
+                            height: inner.height(),
+                        });
+                    }
+                    _ => (),
+                }
+            }
+        });
+        self.setting.save_cache();
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+struct MainPanel {
+    timer_panel: TimerPanel,
+    total_time: u64,
+    timer: Timer,
+    audio: Audio,
+    history: History,
+    tag_index: usize,
+    on_top: bool,
+}
+
+impl MainPanel {
+    fn new(history: History) -> Self {
+        Self {
+            total_time: Self::init_total_time(&history),
+            timer: Timer::new(),
+            timer_panel: TimerPanel::new(),
+            audio: Audio::new(),
+            history,
+            tag_index: 0,
+            on_top: false,
+        }
     }
 
-    fn save_window_info(ctx: &Context, setting: &mut Setting, history: &History) {
-        // Save window info
-        if ctx.input(|i| i.viewport().close_requested()) {
-            ctx.viewport(|v| {
-                if v.input.viewport().maximized.unwrap_or(false) {
-                    setting.set_window_maximized(true);
-                } else {
-                    setting.set_window_maximized(false);
-                    match (v.input.viewport().inner_rect, v.input.viewport().outer_rect) {
-                        (Some(inner), Some(outer)) => {
-                            setting.set_window_info(setting::WindowInfo {
-                                x: outer.left(),
-                                y: outer.top(),
-                                width: inner.width(),
-                                height: inner.height(),
-                            });
+    fn ui(&mut self, ctx: &Context, ui: &mut Ui, setting: &Setting) {
+        let (is_timeout, counter_string) = self.timer.update();
+
+        if self.timer.status() != Status::Stopped {
+            ctx.request_repaint_after_secs(0.2);
+        }
+
+        if is_timeout && self.timer.notify() {
+            ctx.send_viewport_cmd(ViewportCommand::Minimized(false));
+            ctx.send_viewport_cmd(ViewportCommand::WindowLevel(WindowLevel::AlwaysOnTop));
+            self.on_top = true;
+        } else if self.on_top {
+            ctx.send_viewport_cmd(ViewportCommand::WindowLevel(WindowLevel::Normal));
+            self.on_top = false;
+        }
+
+        CentralPanel::default().show_inside(ui, |ui| {
+            ui.with_layout(
+                Layout::bottom_up(Align::Center).with_cross_justify(true),
+                |ui| {
+                    ui.label(self.total_string());
+                    ui.separator();
+                    self.timer_buttons_ui(ui, setting);
+                    ui.add_space(12.0);
+                    self.tags_ui(ui, setting.tags());
+                    self.timer_panel.ui(ui, self.timer.status(), counter_string);
+                },
+            );
+        });
+    }
+
+    fn timer_buttons_ui(&mut self, ui: &mut Ui, setting: &Setting) {
+        let n = setting.timer_list().len();
+        ui.add_space(30.0);
+        ui.horizontal(|ui| {
+            ui.columns(n, |columns| {
+                for (i, t) in setting.timer_list().iter().enumerate() {
+                    columns[i].vertical_centered_justified(|ui| {
+                        let the_same = self.timer.current_name() == Some(&t.name);
+                        let text = if the_same {
+                            "\u{23F9} Stop".to_string()
+                        } else {
+                            format!("{} {}", &t.icon, &t.name)
+                        };
+                        let btn = Button::new(&text).min_size(vec2(40.0, 40.0));
+                        if ui.add(btn).clicked() {
+                            self.audio.cancel_notify();
+                            if self.timer.status() != Status::Stopped {
+                                self.stop(&setting.tags()[self.tag_index]);
+                            }
+                            if !the_same {
+                                self.start(text, t, setting.audio_file());
+                            }
                         }
-                        _ => (),
-                    }
+                    });
                 }
             });
-            setting.save_cache();
-            history.close();
+        });
+    }
+
+    fn tags_ui(&mut self, ui: &mut Ui, tags: &[String]) {
+        let tag = ComboBox::from_id_salt("Tag")
+            .width(ui.available_width())
+            .show_index(ui, &mut self.tag_index, tags.len(), |i| tags[i].to_string());
+        tag.on_hover_text("Tag. It's saved in the history when you stop the timer.");
+    }
+
+    fn start(&mut self, text: String, t: &TimerSetting, audio_file: Option<&str>) {
+        self.timer_panel.set_info(text, t.limit_time);
+        self.timer.start(t);
+        if t.notify() {
+            if let Some(name) = audio_file {
+                self.audio.schedule_notify(name, t.limit_time * 60);
+            }
+        }
+    }
+
+    fn stop(&mut self, tag: &str) {
+        if let Some((duration, name)) = self.timer.stop() {
+            self.total_time += duration;
+            self.history
+                .add_record(self.timer.get_start_time(), duration, &name, tag);
         }
     }
 
@@ -222,51 +284,18 @@ impl MyEguiApp {
         }
     }
 
-    fn timer_buttons_ui(&mut self, ui: &mut Ui) {
-        let n = self.setting.timer_list().len();
-        ui.add_space(25.0);
-        ui.horizontal(|ui| {
-            ui.columns(n, |columns| {
-                for (i, t) in self.setting.timer_list().iter().enumerate() {
-                    columns[i].vertical_centered_justified(|ui| {
-                        let the_same = self.timer.current_name() == Some(&t.name);
-                        let text = if the_same {
-                            "\u{23F9} Stop".to_string()
-                        } else {
-                            format!("{} {}", &t.icon, &t.name)
-                        };
-                        let btn = Button::new(&text).min_size(vec2(40.0, 40.0));
-                        if ui.add(btn).clicked() {
-                            self.audio.cancel_notify();
-                            if self.timer.status() != Status::Stopped {
-                                // Stop
-                                let duration = self.timer.stop();
-                                if duration > 0 {
-                                    self.total_time += duration;
-                                    self.history.add_record(
-                                        self.timer.get_start_time(),
-                                        duration,
-                                        &t.name,
-                                        "English",
-                                    );
-                                }
-                            }
-                            if !the_same {
-                                // Start
-                                self.notify = t.notify();
-                                self.timer_panel.set_info(text, t.limit_time);
-                                self.timer.start(t);
-                                if t.notify() {
-                                    if let Some(name) = self.setting.audio_file() {
-                                        self.audio.schedule_notify(name, t.limit_time * 60);
-                                    }
-                                }
-                            }
-                        }
-                    });
-                }
-            });
-        });
+    fn init_total_time(history: &History) -> u64 {
+        let local: DateTime<Local> = Local::now();
+        let target_hour = (local.hour() + 24 - 3) % 24; // minus 3 am
+        let end = SystemTime::now();
+        let start = end
+            .checked_sub(Duration::from_secs(target_hour as u64 * 60 * 60))
+            .unwrap();
+        history
+            .get_records(&start, &end)
+            .iter()
+            .map(|r| r.duration)
+            .sum()
     }
 }
 

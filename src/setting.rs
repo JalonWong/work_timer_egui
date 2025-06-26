@@ -37,10 +37,14 @@ impl Setting {
         let mut need_save = true;
 
         let mut info = SettingInfo {
-            version: 4,
             theme: Theme::System,
             audio_file: "assets/notify.wav".to_string(),
             play_audio: true,
+            tags: vec![
+                "Program".to_string(),
+                "English".to_string(),
+                "Read".to_string(),
+            ],
             timer_list: vec![
                 TimerSetting {
                     name: "Break".to_string(),
@@ -124,6 +128,10 @@ impl Setting {
         self.info.theme
     }
 
+    pub fn tags(&self) -> &[String] {
+        self.info.tags.as_slice()
+    }
+
     pub fn set_theme(&mut self, theme: Theme) {
         self.info.theme = theme;
     }
@@ -143,7 +151,11 @@ impl Setting {
 
 pub fn get_config_dir() -> PathBuf {
     let mut path = dirs::config_dir().unwrap();
+    #[cfg(debug_assertions)]
+    path.push("work_timer_egui_dbg");
+    #[cfg(not(debug_assertions))]
     path.push("work_timer_egui");
+
     if !path.exists() {
         fs::create_dir_all(&path).unwrap();
     }
@@ -170,10 +182,10 @@ pub struct WindowInfo {
 
 #[derive(Deserialize, Serialize)]
 struct SettingInfo {
-    version: u32,
     theme: Theme,
     play_audio: bool,
     audio_file: String,
+    tags: Vec<String>,
     timer_list: Vec<TimerSetting>,
 }
 

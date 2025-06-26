@@ -10,12 +10,7 @@ pub struct History {
 impl History {
     pub fn new() -> Self {
         let mut path = crate::setting::get_config_dir();
-
-        #[cfg(debug_assertions)]
-        path.push("dbg_history_db");
-        #[cfg(not(debug_assertions))]
         path.push("history_db");
-
         Self {
             db: sled::open(&path).unwrap(),
         }
@@ -58,9 +53,9 @@ impl History {
         rst
     }
 
-    pub fn close(&self) {
-        self.db.flush().ok();
-    }
+    // pub fn close(&self) {
+    //     self.db.flush().ok();
+    // }
 
     fn to_record(key: IVec, value: IVec) -> Option<Record> {
         if let Ok(value) = std::str::from_utf8(value.as_ref()) {

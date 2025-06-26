@@ -34,14 +34,14 @@ impl Timer {
         self.status = Status::Started;
     }
 
-    pub fn stop(&mut self) -> u64 {
+    pub fn stop(&mut self) -> Option<(u64, String)> {
         self.status = Status::Stopped;
         if let Some(s) = self.setting.take() {
             if s.for_work {
-                return self.count;
+                return Some((self.count, s.name));
             }
         }
-        0
+        None
     }
 
     pub fn current_name(&self) -> Option<&str> {
@@ -49,6 +49,14 @@ impl Timer {
             Some(&s.name)
         } else {
             None
+        }
+    }
+
+    pub fn notify(&self) -> bool {
+        if let Some(s) = self.setting.as_ref() {
+            s.notify()
+        } else {
+            false
         }
     }
 
