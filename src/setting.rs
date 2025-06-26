@@ -15,11 +15,7 @@ pub struct Setting {
 
 impl Setting {
     pub fn new() -> Self {
-        let mut file_name = dirs::config_dir().unwrap();
-        file_name.push("work_timer_egui");
-        if !file_name.exists() {
-            fs::create_dir_all(&file_name).unwrap();
-        }
+        let mut file_name = get_config_dir();
 
         let mut cache_name = file_name.clone();
         cache_name.push("cache.toml");
@@ -143,6 +139,15 @@ impl Setting {
             None
         }
     }
+}
+
+pub fn get_config_dir() -> PathBuf {
+    let mut path = dirs::config_dir().unwrap();
+    path.push("work_timer_egui");
+    if !path.exists() {
+        fs::create_dir_all(&path).unwrap();
+    }
+    path
 }
 
 // ----------------------------------------------------------------------------

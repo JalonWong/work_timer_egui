@@ -1,20 +1,26 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 mod audio;
+mod history;
 mod left_panel_ui;
 mod setting;
 mod setting_ui;
 mod timer;
 
 use audio::Audio;
+use chrono::prelude::*;
 use eframe::egui::{
     self, Align, Button, CentralPanel, Color32, Context, FontId, Frame, Layout, RichText, Theme,
     Ui, ViewportCommand, Visuals, WindowLevel, pos2, vec2,
 };
+use history::History;
 use left_panel_ui::LeftPanel;
 use setting::Setting;
 use setting_ui::SettingWindow;
-use std::fs;
+use std::{
+    fs,
+    time::{Duration, SystemTime},
+};
 use timer::{Status, Timer};
 
 fn main() -> eframe::Result {
@@ -57,6 +63,7 @@ struct MyEguiApp {
     notify: bool,
     audio: Audio,
     on_top: bool,
+    history: History,
 }
 
 impl eframe::App for MyEguiApp {
@@ -100,7 +107,7 @@ impl eframe::App for MyEguiApp {
 
             self.setting_window.ui(ui, &mut self.setting);
 
-            Self::save_window_info(ctx, &mut self.setting);
+            Self::save_window_info(ctx, &mut self.setting, &self.history);
         });
     }
 }
@@ -133,8 +140,10 @@ impl MyEguiApp {
             setting::Theme::System => (),
         }
 
+        let history = History::new();
+
         Self {
-            total_time: 0,
+            total_time: Self::init_total_time(&history),
             timer: Timer::new(),
             timer_panel: TimerPanel::new(),
             left_panel: LeftPanel::new(110.0, &[("\u{1F313}", "Theme"), ("\u{26ED}", "Setting")]),
@@ -143,6 +152,7 @@ impl MyEguiApp {
             notify: false,
             audio: Audio::new(),
             on_top: false,
+            history,
         }
     }
 
@@ -158,7 +168,21 @@ impl MyEguiApp {
         self.setting.save();
     }
 
-    fn save_window_info(ctx: &Context, setting: &mut Setting) {
+    fn init_total_time(history: &History) -> u64 {
+        let local: DateTime<Local> = Local::now();
+        let target_hour = (local.hour() + 24 - 3) % 24; // minus 3 am
+        let end = SystemTime::now();
+        let start = end
+            .checked_sub(Duration::from_secs(target_hour as u64 * 60 * 60))
+            .unwrap();
+        history
+            .get_records(&start, &end)
+            .iter()
+            .map(|r| r.duration)
+            .sum()
+    }
+
+    fn save_window_info(ctx: &Context, setting: &mut Setting, history: &History) {
         // Save window info
         if ctx.input(|i| i.viewport().close_requested()) {
             ctx.viewport(|v| {
@@ -180,6 +204,7 @@ impl MyEguiApp {
                 }
             });
             setting.save_cache();
+            history.close();
         }
     }
 
@@ -215,7 +240,16 @@ impl MyEguiApp {
                             self.audio.cancel_notify();
                             if self.timer.status() != Status::Stopped {
                                 // Stop
-                                self.total_time += self.timer.stop();
+                                let duration = self.timer.stop();
+                                if duration > 0 {
+                                    self.total_time += duration;
+                                    self.history.add_record(
+                                        self.timer.get_start_time(),
+                                        duration,
+                                        &t.name,
+                                        "English",
+                                    );
+                                }
                             }
                             if !the_same {
                                 // Start
@@ -268,7 +302,7 @@ impl TimerPanel {
 
     fn get_green(&self, ui: &mut Ui) -> Color32 {
         if ui.ctx().theme() == Theme::Dark {
-            Color32::from_rgb(60, 90, 60)
+            Color32::from_rgb(40, 90, 60)
         } else {
             Color32::from_rgb(140, 235, 130)
         }

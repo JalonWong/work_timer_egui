@@ -46,7 +46,7 @@ impl Audio {
             sink.append(source);
 
             while !sink.empty() {
-                thread::park_timeout(Duration::from_millis(300));
+                thread::park_timeout(Duration::from_millis(100));
                 if !run_flag.load(Ordering::SeqCst) {
                     break;
                 }

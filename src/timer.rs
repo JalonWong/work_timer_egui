@@ -1,5 +1,5 @@
-use std::time::Instant;
 use crate::setting::TimerSetting;
+use std::time::{Instant, SystemTime};
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum Status {
@@ -10,7 +10,8 @@ pub enum Status {
 
 pub struct Timer {
     count: u64,
-    start_time: Instant,
+    start_instant: Instant,
+    start_time: SystemTime,
     status: Status,
     setting: Option<TimerSetting>,
 }
@@ -20,14 +21,16 @@ impl Timer {
         Self {
             status: Status::Stopped,
             count: 0,
-            start_time: Instant::now(),
+            start_instant: Instant::now(),
+            start_time: SystemTime::now(),
             setting: None,
         }
     }
 
     pub fn start(&mut self, setting: &TimerSetting) {
         self.setting = Some(setting.clone());
-        self.start_time = Instant::now();
+        self.start_instant = Instant::now();
+        self.start_time = SystemTime::now();
         self.status = Status::Started;
     }
 
@@ -35,7 +38,7 @@ impl Timer {
         self.status = Status::Stopped;
         if let Some(s) = self.setting.take() {
             if s.for_work {
-                return self.count
+                return self.count;
             }
         }
         0
@@ -53,11 +56,15 @@ impl Timer {
         self.status
     }
 
+    pub fn get_start_time(&self) -> &SystemTime {
+        &self.start_time
+    }
+
     pub fn update(&mut self) -> (bool, String) {
         let mut is_timeout = false;
         let counter_string = if let Some(setting) = self.setting.as_ref() {
             let limit_count = setting.limit_time * 60;
-            self.count = self.start_time.elapsed().as_secs();
+            self.count = self.start_instant.elapsed().as_secs();
             if self.status != Status::TimeOut && self.count >= limit_count {
                 self.status = Status::TimeOut;
                 is_timeout = true;
