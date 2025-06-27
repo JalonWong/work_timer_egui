@@ -1,4 +1,5 @@
 use dirs;
+use eframe::egui::ThemePreference;
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
@@ -124,12 +125,12 @@ impl Setting {
         &self.file_name
     }
 
-    pub fn theme(&self) -> Theme {
-        self.info.theme
-    }
-
     pub fn tags(&self) -> &[String] {
         self.info.tags.as_slice()
+    }
+
+    pub fn theme(&self) -> Theme {
+        self.info.theme
     }
 
     pub fn set_theme(&mut self, theme: Theme) {
@@ -146,6 +147,18 @@ impl Setting {
         } else {
             None
         }
+    }
+
+    pub fn mut_audio_file(&mut self) -> &mut String {
+        &mut self.info.audio_file
+    }
+
+    pub fn set_play_audio(&mut self, v: bool) {
+        self.info.play_audio = v;
+    }
+
+    pub fn play_audio(&self) -> bool {
+        self.info.play_audio
     }
 }
 
@@ -194,6 +207,26 @@ pub enum Theme {
     System,
     Dark,
     Light,
+}
+
+impl From<ThemePreference> for Theme {
+    fn from(value: ThemePreference) -> Self {
+        match value {
+            ThemePreference::Dark => Self::Dark,
+            ThemePreference::Light => Self::Light,
+            ThemePreference::System => Self::System,
+        }
+    }
+}
+
+impl Into<ThemePreference> for Theme {
+    fn into(self) -> ThemePreference {
+        match self {
+            Self::Dark => ThemePreference::Dark,
+            Self::Light => ThemePreference::Light,
+            Self::System => ThemePreference::System,
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Clone)]
