@@ -88,16 +88,20 @@ impl Timer {
                 }
             };
 
-            let minutes = count / 60;
-            if minutes >= 60 {
-                let hours = minutes / 60;
-                format!("{}{:02}:{:02}:{:02}", sign, hours, minutes % 60, count % 60)
-            } else {
-                format!("{}{:02}:{:02}", sign, minutes, count % 60)
-            }
+            secs_to_string(count, sign)
         } else {
             "00:00".to_string()
         };
         (is_timeout, counter_string)
+    }
+}
+
+pub fn secs_to_string(secs: u64, sign: &str) -> String {
+    let minutes = secs / 60;
+    if minutes >= 60 {
+        let hours = minutes / 60;
+        format!("{}{:02}:{:02}:{:02}", sign, hours, minutes % 60, secs % 60)
+    } else {
+        format!("{}{:02}:{:02}", sign, minutes, secs % 60)
     }
 }
