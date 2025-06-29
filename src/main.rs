@@ -2,6 +2,7 @@
 
 mod audio;
 mod history;
+mod history_ui;
 mod left_panel_ui;
 mod setting;
 mod setting_ui;
@@ -14,6 +15,7 @@ use eframe::egui::{
     TextStyle, Theme, Ui, ViewportCommand, Visuals, WindowLevel, pos2, vec2,
 };
 use history::History;
+use history_ui::HistoryWindow;
 use left_panel_ui::LeftPanel;
 use setting::Setting;
 use setting_ui::SettingWindow;
@@ -63,6 +65,7 @@ struct MyEguiApp {
     setting: Setting,
     setting_window: SettingWindow,
     history: History,
+    history_window: HistoryWindow,
 }
 
 impl eframe::App for MyEguiApp {
@@ -71,13 +74,15 @@ impl eframe::App for MyEguiApp {
             let btn_status = self.left_panel.ui(ui);
             for btn in btn_status {
                 match btn {
-                    0 => self.setting_window.show(),
+                    0 => self.history_window.show(&self.history),
+                    1 => self.setting_window.show(),
                     _ => (),
                 }
             }
 
             self.main_panel
                 .ui(ctx, ui, &self.setting, &mut self.history);
+            self.history_window.ui(ui, &mut self.history);
             self.setting_window.ui(ui, &mut self.setting);
             if self.setting_window.is_show() {
                 self.main_panel.timer_panel.change_color(ui);
@@ -101,6 +106,7 @@ impl MyEguiApp {
             (TextStyle::Heading, FontId::proportional(30.0)),
             (TextStyle::Body, FontId::proportional(15.0)),
             (TextStyle::Button, FontId::proportional(15.0)),
+            (TextStyle::Monospace, FontId::monospace(15.0)),
         ]
         .into();
         cc.egui_ctx.set_style_of(Theme::Dark, style.clone());
@@ -122,10 +128,11 @@ impl MyEguiApp {
 
         Self {
             main_panel: MainPanel::new(Self::init_total_time(&history)),
-            left_panel: LeftPanel::new(110.0, &[("\u{26ED}", "Setting")]),
+            left_panel: LeftPanel::new(110.0, &[("\u{1F4C4}", "History"), ("\u{26ED}", "Setting")]),
             setting,
             setting_window,
             history,
+            history_window: HistoryWindow::new(),
         }
     }
 
@@ -137,7 +144,7 @@ impl MyEguiApp {
             .checked_sub(Duration::from_secs(target_hour as u64 * 60 * 60))
             .unwrap();
         history
-            .get_records(&start, &end)
+            .get_records(&start, &end, false)
             .iter()
             .map(|r| r.duration)
             .sum()
@@ -170,6 +177,10 @@ impl MyEguiApp {
         });
         self.setting.save_cache();
     }
+}
+
+fn get_viewport_inner_rect(ctx: &Context) -> Option<egui::Rect> {
+    ctx.viewport(|v| v.input.viewport().inner_rect)
 }
 
 // ----------------------------------------------------------------------------
