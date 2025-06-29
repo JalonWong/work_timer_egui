@@ -61,9 +61,10 @@ impl History {
         rst
     }
 
-    // pub fn close(&self) {
-    //     self.db.flush().ok();
-    // }
+    pub fn remove(&mut self, key: &SystemTime) {
+        self.db.remove(Self::to_key(key)).ok();
+        self.db.flush().ok();
+    }
 
     fn to_record(key: IVec, value: IVec) -> Option<Record> {
         if let Ok(value) = std::str::from_utf8(value.as_ref()) {
@@ -92,6 +93,7 @@ impl History {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct Record {
     pub start_time_u64: u64,

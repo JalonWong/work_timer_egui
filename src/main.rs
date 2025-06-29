@@ -179,6 +179,10 @@ impl MyEguiApp {
     }
 }
 
+fn get_viewport_inner_rect(ctx: &Context) -> Option<egui::Rect> {
+    ctx.viewport(|v| v.input.viewport().inner_rect)
+}
+
 // ----------------------------------------------------------------------------
 
 struct MainPanel {

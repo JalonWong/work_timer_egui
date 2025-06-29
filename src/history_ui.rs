@@ -2,12 +2,13 @@ use std::time::{Duration, SystemTime};
 
 use crate::history::{History, Record};
 use chrono::{DateTime, Local};
-use eframe::egui::{FontId, Id, Modal, RichText, Ui};
+use eframe::egui::{Id, Modal, RichText, Sides, Ui};
 use egui_extras::{Column, TableBuilder};
 
 pub struct HistoryWindow {
     show: bool,
     records: Vec<Record>,
+    delete_index: Option<usize>,
 }
 
 impl HistoryWindow {
@@ -15,6 +16,7 @@ impl HistoryWindow {
         Self {
             show: false,
             records: Vec::new(),
+            delete_index: None,
         }
     }
 
@@ -31,6 +33,10 @@ impl HistoryWindow {
         if self.show {
             let modal = Modal::new(Id::new("history")).backdrop_color(crate::MODAL_BG);
             let response = modal.show(ui.ctx(), |ui| {
+                if let Some(r) = crate::get_viewport_inner_rect(ui.ctx()) {
+                    ui.set_max_height(r.height() * 0.85);
+                }
+
                 ui.heading("History");
                 ui.separator();
 
@@ -38,6 +44,7 @@ impl HistoryWindow {
                     .striped(true)
                     .column(Column::remainder().at_least(180.0))
                     .column(Column::auto())
+                    .column(Column::remainder().at_least(40.0))
                     .column(Column::remainder().at_least(40.0))
                     .header(20.0, |mut header| {
                         header.col(|ui| {
@@ -49,9 +56,13 @@ impl HistoryWindow {
                         header.col(|ui| {
                             ui.strong("Tag");
                         });
+                        header.col(|ui| {
+                            ui.strong("Del");
+                        });
                     })
                     .body(|body| {
                         body.rows(18.0, self.records.len(), |mut row| {
+                            let index = row.index();
                             let record = &self.records[row.index()];
                             row.col(|ui| {
                                 let local_time: DateTime<Local> = record.start_time.into();
@@ -65,11 +76,46 @@ impl HistoryWindow {
                             row.col(|ui| {
                                 ui.label(&record.tag);
                             });
+                            row.col(|ui| {
+                                if ui.button("\u{274E}").clicked() {
+                                    self.delete_index = Some(index);
+                                }
+                            });
                         });
                     });
             });
             if response.should_close() {
                 self.show = false;
+            }
+            self.delete_record_ui(ui, history);
+        }
+    }
+
+    fn delete_record_ui(&mut self, ui: &mut Ui, history: &mut History) {
+        if let Some(index) = self.delete_index {
+            let modal = Modal::new(Id::new("delete")).backdrop_color(crate::MODAL_BG);
+            let response = modal.show(ui.ctx(), |ui| {
+                ui.set_width(350.0);
+                ui.heading("Are you sure you want to delete this record?");
+                ui.add_space(32.0);
+                Sides::new().show(
+                    ui,
+                    |_ui| {},
+                    |ui| {
+                        if ui.button("Yes").clicked() {
+                            history.remove(&self.records[index].start_time);
+                            self.records.remove(index);
+                            self.delete_index.take();
+                        }
+
+                        if ui.button("No").clicked() {
+                            self.delete_index.take();
+                        }
+                    },
+                );
+            });
+            if response.should_close() {
+                self.delete_index.take();
             }
         }
     }
