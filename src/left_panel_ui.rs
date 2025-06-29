@@ -1,4 +1,4 @@
-use eframe::egui::{Button, Frame, Response, SidePanel, Ui, vec2};
+use eframe::egui::{Button, Frame, Margin, Response, SidePanel, Ui, vec2};
 
 struct ButtonInfo {
     icon: String,
@@ -30,7 +30,7 @@ impl LeftPanel {
         let btn_width = if self.is_expanded {
             self.width - 9.0
         } else {
-            15.0
+            28.0
         };
         let btn = Button::new(text).min_size(vec2(btn_width, 30.0));
         let mut rst = ui.add(btn);
@@ -68,16 +68,30 @@ impl LeftPanel {
 
     pub fn ui(&mut self, ui: &mut Ui) -> Vec<usize> {
         let mut btn_status = Vec::new();
-        let frame = Frame::default().inner_margin(1).outer_margin(0);
+        let frame = Frame::default()
+            .inner_margin(Margin {
+                left: if self.is_expanded { 1 } else { 0 },
+                right: 7,
+                top: 2,
+                bottom: 0,
+            })
+            .outer_margin(0);
         SidePanel::left("left_panel")
             .resizable(false)
             .frame(frame)
-            .exact_width(if self.is_expanded { self.width } else { 32.0 })
+            .exact_width(if self.is_expanded { self.width } else { 36.0 })
             .show_inside(ui, |ui| {
-                ui.vertical(|ui| {
-                    self.expand_btn(ui);
-                    self.add_list_button(ui, &mut btn_status);
-                });
+                if self.is_expanded {
+                    ui.vertical(|ui| {
+                        self.expand_btn(ui);
+                        self.add_list_button(ui, &mut btn_status);
+                    });
+                } else {
+                    ui.vertical_centered(|ui| {
+                        self.expand_btn(ui);
+                        self.add_list_button(ui, &mut btn_status);
+                    });
+                }
             });
         btn_status
     }
