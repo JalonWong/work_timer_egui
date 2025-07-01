@@ -24,7 +24,10 @@ impl Setting {
         file_name.push("config.toml");
 
         let info = Self::load_setting(&file_name);
-        let cache_info = Self::load_cache(&cache_name);
+        let mut cache_info = Self::load_cache(&cache_name);
+        if cache_info.tag_index >= info.tags.len() {
+            cache_info.tag_index = 0;
+        }
 
         Self {
             cache_name,
@@ -86,6 +89,7 @@ impl Setting {
         let mut info = CacheInfo {
             maximized: false,
             window: None,
+            tag_index: 0,
         };
 
         if file_name.exists() {
@@ -160,6 +164,14 @@ impl Setting {
     pub fn play_audio(&self) -> bool {
         self.info.play_audio
     }
+
+    pub fn set_tag_index(&mut self, v: usize) {
+        self.cache_info.tag_index = v;
+    }
+
+    pub fn tag_index(&self) -> usize {
+        self.cache_info.tag_index
+    }
 }
 
 pub fn get_config_dir() -> PathBuf {
@@ -181,6 +193,7 @@ pub fn get_config_dir() -> PathBuf {
 struct CacheInfo {
     maximized: bool,
     window: Option<WindowInfo>,
+    tag_index: usize,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

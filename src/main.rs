@@ -127,7 +127,7 @@ impl MyEguiApp {
         let history = History::new();
 
         Self {
-            main_panel: MainPanel::new(Self::init_total_time(&history)),
+            main_panel: MainPanel::new(Self::init_total_time(&history), setting.tag_index()),
             left_panel: LeftPanel::new(110.0, &[("\u{1F4C4}", "History"), ("\u{26ED}", "Setting")]),
             setting,
             setting_window,
@@ -155,6 +155,8 @@ impl MyEguiApp {
             &self.setting.tags()[self.main_panel.tag_index],
             &mut self.history,
         );
+
+        self.setting.set_tag_index(self.main_panel.tag_index);
 
         // Save window info
         ctx.viewport(|v| {
@@ -195,13 +197,13 @@ struct MainPanel {
 }
 
 impl MainPanel {
-    fn new(total_time: u64) -> Self {
+    fn new(total_time: u64, tag_index: usize) -> Self {
         Self {
             total_time,
             timer: Timer::new(),
             timer_panel: TimerPanel::new(),
             audio: Audio::new(),
-            tag_index: 0,
+            tag_index,
             on_top: false,
         }
     }

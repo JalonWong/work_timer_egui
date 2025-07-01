@@ -22,9 +22,10 @@ impl HistoryWindow {
 
     pub fn show(&mut self, history: &History) {
         let end = SystemTime::now();
-        let start = end
-            .checked_sub(Duration::from_secs(3 * 24 * 60 * 60))
-            .unwrap();
+        let start = SystemTime::UNIX_EPOCH;
+        // let start = end
+        //     .checked_sub(Duration::from_secs(3 * 24 * 60 * 60))
+        //     .unwrap();
         self.records = history.get_records(&start, &end, true);
         self.show = true;
     }
@@ -43,7 +44,7 @@ impl HistoryWindow {
                 TableBuilder::new(ui)
                     .striped(true)
                     .column(Column::remainder().at_least(180.0))
-                    .column(Column::auto())
+                    .column(Column::remainder().at_least(80.0))
                     .column(Column::remainder().at_least(40.0))
                     .column(Column::remainder().at_least(40.0))
                     .header(20.0, |mut header| {
