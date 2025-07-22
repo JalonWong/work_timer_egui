@@ -28,6 +28,11 @@ impl HistoryWindow {
         self.show = true;
     }
 
+    fn close(&mut self) {
+        self.show = false;
+        self.records = Vec::new();
+    }
+
     fn refresh_records(&mut self, history: &History) {
         let end = SystemTime::now();
         let start = match self.time_window {
@@ -119,7 +124,7 @@ impl HistoryWindow {
                     });
             });
             if response.should_close() {
-                self.show = false;
+                self.close();
             }
             self.delete_record_ui(ui, history);
         }

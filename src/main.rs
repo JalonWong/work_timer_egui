@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 mod audio;
+mod chart_ui;
 mod history;
 mod history_ui;
 mod left_panel_ui;
@@ -9,6 +10,7 @@ mod setting_ui;
 mod timer;
 
 use audio::Audio;
+use chart_ui::ChartWindow;
 use chrono::prelude::*;
 use eframe::egui::{
     self, Align, Button, CentralPanel, Color32, ComboBox, Context, FontId, Frame, Layout, RichText,
@@ -66,6 +68,7 @@ struct MyEguiApp {
     setting_window: SettingWindow,
     history: History,
     history_window: HistoryWindow,
+    chart_window: ChartWindow,
 }
 
 impl eframe::App for MyEguiApp {
@@ -74,14 +77,16 @@ impl eframe::App for MyEguiApp {
             let btn_status = self.left_panel.ui(ui);
             for btn in btn_status {
                 match btn {
-                    0 => self.history_window.show(&self.history),
-                    1 => self.setting_window.show(),
+                    0 => self.chart_window.show(&self.history),
+                    1 => self.history_window.show(&self.history),
+                    2 => self.setting_window.show(),
                     _ => (),
                 }
             }
 
             self.main_panel
                 .ui(ctx, ui, &self.setting, &mut self.history);
+            self.chart_window.ui(ui, &self.history);
             self.history_window.ui(ui, &mut self.history);
             self.setting_window.ui(ui, &mut self.setting);
             if self.setting_window.is_show() {
@@ -128,11 +133,12 @@ impl MyEguiApp {
 
         Self {
             main_panel: MainPanel::new(Self::init_total_time(&history), setting.tag_index()),
-            left_panel: LeftPanel::new(110.0, &[("\u{1F4C4}", "History"), ("\u{26ED}", "Setting")]),
+            left_panel: LeftPanel::new(110.0, &[("\u{1F4CA}", "Chart"), ("\u{1F4C4}", "History"), ("\u{26ED}", "Setting")]),
             setting,
             setting_window,
             history,
             history_window: HistoryWindow::new(),
+            chart_window: ChartWindow::new(),
         }
     }
 
