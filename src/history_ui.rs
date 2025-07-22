@@ -9,6 +9,7 @@ pub struct HistoryWindow {
     show: bool,
     records: Vec<Record>,
     delete_index: Option<usize>,
+    time_window: TimeWindow,
 }
 
 impl HistoryWindow {
@@ -17,17 +18,28 @@ impl HistoryWindow {
             show: false,
             records: Vec::new(),
             delete_index: None,
+            time_window: TimeWindow::OneDay,
         }
     }
 
     pub fn show(&mut self, history: &History) {
-        let end = SystemTime::now();
-        let start = SystemTime::UNIX_EPOCH;
-        // let start = end
-        //     .checked_sub(Duration::from_secs(3 * 24 * 60 * 60))
-        //     .unwrap();
-        self.records = history.get_records(&start, &end, true);
+        self.time_window = TimeWindow::OneDay;
+        self.refresh_records(history);
         self.show = true;
+    }
+
+    fn refresh_records(&mut self, history: &History) {
+        let end = SystemTime::now();
+        let start = match self.time_window {
+            TimeWindow::OneDay => end
+                .checked_sub(Duration::from_secs(24 * 60 * 60))
+                .unwrap(),
+            TimeWindow::SevenDays => end
+                .checked_sub(Duration::from_secs(7 * 24 * 60 * 60))
+                .unwrap(),
+            TimeWindow::All => SystemTime::UNIX_EPOCH,
+        };
+        self.records = history.get_records(&start, &end, true);
     }
 
     pub fn ui(&mut self, ui: &mut Ui, history: &mut History) {
@@ -35,10 +47,31 @@ impl HistoryWindow {
             let modal = Modal::new(Id::new("history")).backdrop_color(crate::MODAL_BG);
             let response = modal.show(ui.ctx(), |ui| {
                 if let Some(r) = crate::get_viewport_inner_rect(ui.ctx()) {
-                    ui.set_max_height(r.height() * 0.85);
+                    ui.set_max_height(r.height() - 45.0);
                 }
 
-                ui.heading("History");
+                ui.horizontal(|ui| {
+                    ui.heading("History");
+                    ui.add_space(20.0);
+                    if ui
+                        .selectable_value(&mut self.time_window, TimeWindow::OneDay, "1 Day")
+                        .clicked()
+                    {
+                        self.refresh_records(history);
+                    }
+                    if ui
+                        .selectable_value(&mut self.time_window, TimeWindow::SevenDays, "7 Days")
+                        .clicked()
+                    {
+                        self.refresh_records(history);
+                    }
+                    if ui
+                        .selectable_value(&mut self.time_window, TimeWindow::All, "All")
+                        .clicked()
+                    {
+                        self.refresh_records(history);
+                    }
+                });
                 ui.separator();
 
                 TableBuilder::new(ui)
@@ -106,18 +139,25 @@ impl HistoryWindow {
                         if ui.button("Yes").clicked() {
                             history.remove(&self.records[index].start_time);
                             self.records.remove(index);
-                            self.delete_index.take();
+                            self.delete_index = None;
                         }
 
                         if ui.button("No").clicked() {
-                            self.delete_index.take();
+                            self.delete_index = None;
                         }
                     },
                 );
             });
             if response.should_close() {
-                self.delete_index.take();
+                self.delete_index = None;
             }
         }
     }
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum TimeWindow {
+    OneDay,
+    SevenDays,
+    All,
 }
