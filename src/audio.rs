@@ -1,5 +1,4 @@
-use rodio::Sink;
-use rodio::{Decoder, OutputStream};
+use rodio::OutputStreamBuilder;
 use std::fs::{self, File};
 use std::io::BufReader;
 use std::sync::Arc;
@@ -36,14 +35,9 @@ impl Audio {
                 return;
             }
 
-            // _stream must live as long as the sink
-            let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-            let sink = Sink::try_new(&stream_handle).unwrap();
-            // Load a sound from a file, using a path relative to Cargo.toml
+            let stream_handle = OutputStreamBuilder::open_default_stream().unwrap();
             let file = BufReader::new(File::open(name).unwrap());
-            // Decode that sound file into a source
-            let source = Decoder::new(file).unwrap();
-            sink.append(source);
+            let sink = rodio::play(&stream_handle.mixer(), file).unwrap();
 
             while !sink.empty() {
                 thread::park_timeout(Duration::from_millis(100));
