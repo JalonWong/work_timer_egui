@@ -1,2 +1,5 @@
 /target
 /.vscode
+/*.zip
+/*.tar.gz
+/.mypy_cache
