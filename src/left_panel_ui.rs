@@ -44,7 +44,7 @@ impl LeftPanel {
         for (i, btn) in self.btn_list.iter().enumerate() {
             let mut text = btn.icon.clone();
             if self.is_expanded {
-                text.push_str(" ");
+                text.push(' ');
                 text.push_str(&btn.text);
             }
 

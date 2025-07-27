@@ -55,7 +55,7 @@ impl ChartWindow {
             }
             tag_record_map
                 .entry(&record.tag)
-                .or_insert_with(HashMap::new)
+                .or_default()
                 .entry(date)
                 .and_modify(|duration| *duration += record.duration)
                 .or_insert(record.duration);
@@ -147,7 +147,7 @@ impl ChartWindow {
                                 )
                             }));
                     if !charts.is_empty() {
-                        let others: Vec<&BarChart> = charts.iter().map(|c| c).collect();
+                        let others: Vec<&BarChart> = charts.iter().collect();
                         chart = chart.stack_on(&others);
                     }
                     charts.push(chart);

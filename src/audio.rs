@@ -37,7 +37,7 @@ impl Audio {
 
             let stream_handle = OutputStreamBuilder::open_default_stream().unwrap();
             let file = BufReader::new(File::open(name).unwrap());
-            let sink = rodio::play(&stream_handle.mixer(), file).unwrap();
+            let sink = rodio::play(stream_handle.mixer(), file).unwrap();
 
             while !sink.empty() {
                 thread::park_timeout(Duration::from_millis(100));

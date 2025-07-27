@@ -1,11 +1,9 @@
-use dirs;
 use eframe::egui::ThemePreference;
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
     path::{Path, PathBuf},
 };
-use toml;
 
 pub struct Setting {
     cache_name: PathBuf,
@@ -80,7 +78,7 @@ impl Setting {
 
         // Save
         if need_save {
-            fs::write(&file_name, toml::to_string(&info).unwrap()).unwrap();
+            fs::write(file_name, toml::to_string(&info).unwrap()).unwrap();
         }
         info
     }
@@ -232,12 +230,12 @@ impl From<ThemePreference> for Theme {
     }
 }
 
-impl Into<ThemePreference> for Theme {
-    fn into(self) -> ThemePreference {
-        match self {
-            Self::Dark => ThemePreference::Dark,
-            Self::Light => ThemePreference::Light,
-            Self::System => ThemePreference::System,
+impl From<Theme> for ThemePreference {
+    fn from(val: Theme) -> Self {
+        match val {
+            Theme::Dark => Self::Dark,
+            Theme::Light => Self::Light,
+            Theme::System => Self::System,
         }
     }
 }

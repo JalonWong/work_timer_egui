@@ -88,7 +88,7 @@ fn open_file(file_path: &Path) {
     let file_path = file_path.to_str().unwrap();
     #[cfg(target_os = "windows")]
     Command::new("cmd")
-        .args(&["/C", "start", "", file_path])
+        .args(["/C", "start", "", file_path])
         .spawn()
         .ok();
 

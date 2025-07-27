@@ -80,12 +80,10 @@ impl Timer {
 
             let (sign, count) = if setting.count_up {
                 ("", self.count)
+            } else if self.count <= limit_count {
+                ("", limit_count - self.count)
             } else {
-                if self.count <= limit_count {
-                    ("", limit_count - self.count)
-                } else {
-                    ("-", self.count - limit_count)
-                }
+                ("-", self.count - limit_count)
             };
 
             secs_to_string(count, sign)

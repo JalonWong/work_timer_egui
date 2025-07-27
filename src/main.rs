@@ -103,14 +103,16 @@ impl MyEguiApp {
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
         // for e.g. egui::PaintCallback.
 
-        let mut style = egui::Style::default();
-        style.text_styles = [
-            (TextStyle::Heading, FontId::proportional(30.0)),
-            (TextStyle::Body, FontId::proportional(15.0)),
-            (TextStyle::Button, FontId::proportional(15.0)),
-            (TextStyle::Monospace, FontId::monospace(15.0)),
-        ]
-        .into();
+        let style = eframe::egui::Style {
+            text_styles: [
+                (TextStyle::Heading, FontId::proportional(30.0)),
+                (TextStyle::Body, FontId::proportional(15.0)),
+                (TextStyle::Button, FontId::proportional(15.0)),
+                (TextStyle::Monospace, FontId::monospace(15.0)),
+            ]
+            .into(),
+            ..Default::default()
+        };
         cc.egui_ctx.set_style_of(Theme::Dark, style.clone());
         cc.egui_ctx.set_style_of(Theme::Light, style);
 
@@ -170,16 +172,15 @@ impl MyEguiApp {
                 self.setting.set_window_maximized(true);
             } else {
                 self.setting.set_window_maximized(false);
-                match (v.input.viewport().inner_rect, v.input.viewport().outer_rect) {
-                    (Some(inner), Some(outer)) => {
-                        self.setting.set_window_info(setting::WindowInfo {
-                            x: outer.left(),
-                            y: outer.top(),
-                            width: inner.width(),
-                            height: inner.height(),
-                        });
-                    }
-                    _ => (),
+                if let (Some(inner), Some(outer)) =
+                    (v.input.viewport().inner_rect, v.input.viewport().outer_rect)
+                {
+                    self.setting.set_window_info(setting::WindowInfo {
+                        x: outer.left(),
+                        y: outer.top(),
+                        width: inner.width(),
+                        height: inner.height(),
+                    });
                 }
             }
         });

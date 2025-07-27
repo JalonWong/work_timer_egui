@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use sled::{Db, IVec};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use toml;
 
 pub struct History {
     db: Db,
@@ -33,19 +32,15 @@ impl History {
         let end = Self::to_key(end);
         let mut rst = Vec::new();
         if reverse {
-            for item in self.db.range(start..end).rev() {
-                if let Ok((key, value)) = item {
-                    if let Some(record) = Self::to_record(key, value) {
-                        rst.push(record);
-                    }
+            for (key, value) in self.db.range(start..end).rev().flatten() {
+                if let Some(record) = Self::to_record(key, value) {
+                    rst.push(record);
                 }
             }
         } else {
-            for item in self.db.range(start..end) {
-                if let Ok((key, value)) = item {
-                    if let Some(record) = Self::to_record(key, value) {
-                        rst.push(record);
-                    }
+            for (key, value) in self.db.range(start..end).flatten() {
+                if let Some(record) = Self::to_record(key, value) {
+                    rst.push(record);
                 }
             }
         }
@@ -64,7 +59,7 @@ impl History {
             .fetch_and_update(Self::to_key(key), |value| {
                 if let Some(value) = value {
                     if let Ok(mut record) =
-                        toml::from_str::<RecordTmp>(std::str::from_utf8(&value).unwrap())
+                        toml::from_str::<RecordTmp>(std::str::from_utf8(value).unwrap())
                     {
                         record.t = tag.to_string();
                         return Some(toml::to_string(&record).unwrap().into_bytes());
