@@ -5,7 +5,7 @@ use eframe::egui::{Id, Modal, Ui};
 use egui_plot::{AxisHints, Bar, BarChart, Legend, Plot};
 use std::{
     collections::HashMap,
-    time::{Duration, SystemTime},
+    time::SystemTime,
 };
 
 pub struct ChartWindow {
@@ -37,12 +37,8 @@ impl ChartWindow {
     fn refresh_records(&mut self, history: &History) {
         let end = SystemTime::now();
         let start = match self.time_window {
-            TimeWindow::Day7 => end
-                .checked_sub(Duration::from_secs(7 * 24 * 60 * 60))
-                .unwrap(),
-            TimeWindow::Day30 => end
-                .checked_sub(Duration::from_secs(30 * 24 * 60 * 60))
-                .unwrap(),
+            TimeWindow::Day7 => crate::get_time_from_offset_days(-6),
+            TimeWindow::Day30 => crate::get_time_from_offset_days(-29),
             TimeWindow::All => SystemTime::UNIX_EPOCH,
         };
 

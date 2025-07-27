@@ -1,4 +1,4 @@
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 
 use crate::history::{History, Record};
 use chrono::{DateTime, Local};
@@ -40,10 +40,8 @@ impl HistoryWindow {
     fn refresh_records(&mut self, history: &History) {
         let end = SystemTime::now();
         let start = match self.time_window {
-            TimeWindow::Day1 => end.checked_sub(Duration::from_secs(24 * 60 * 60)).unwrap(),
-            TimeWindow::Day7 => end
-                .checked_sub(Duration::from_secs(7 * 24 * 60 * 60))
-                .unwrap(),
+            TimeWindow::Day1 => crate::get_time_from_offset_days(0),
+            TimeWindow::Day7 => crate::get_time_from_offset_days(-6),
             TimeWindow::All => SystemTime::UNIX_EPOCH,
         };
         self.records = history.get_records(&start, &end, true);

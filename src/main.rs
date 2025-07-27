@@ -11,7 +11,7 @@ mod timer;
 
 use audio::Audio;
 use chart_ui::ChartWindow;
-use chrono::prelude::*;
+use chrono::Local;
 use eframe::egui::{
     self, Align, Button, CentralPanel, Color32, ComboBox, Context, FontId, Frame, Layout, RichText,
     TextStyle, Theme, Ui, ViewportCommand, Visuals, WindowLevel, pos2, vec2,
@@ -21,10 +21,7 @@ use history_ui::HistoryWindow;
 use left_panel_ui::LeftPanel;
 use setting::Setting;
 use setting_ui::SettingWindow;
-use std::{
-    fs,
-    time::{Duration, SystemTime},
-};
+use std::{fs, time::SystemTime};
 use timer::{Status, Timer};
 
 use crate::setting::TimerSetting;
@@ -133,7 +130,14 @@ impl MyEguiApp {
 
         Self {
             main_panel: MainPanel::new(Self::init_total_time(&history), setting.tag_index()),
-            left_panel: LeftPanel::new(110.0, &[("\u{1F4CA}", "Chart"), ("\u{1F4C4}", "History"), ("\u{26ED}", "Setting")]),
+            left_panel: LeftPanel::new(
+                110.0,
+                &[
+                    ("\u{1F4CA}", "Chart"),
+                    ("\u{1F4C4}", "History"),
+                    ("\u{26ED}", "Setting"),
+                ],
+            ),
             setting,
             setting_window,
             history,
@@ -143,12 +147,8 @@ impl MyEguiApp {
     }
 
     fn init_total_time(history: &History) -> u64 {
-        let local: DateTime<Local> = Local::now();
-        let target_hour = (local.hour() + 24 - 3) % 24; // minus 3 am
         let end = SystemTime::now();
-        let start = end
-            .checked_sub(Duration::from_secs(target_hour as u64 * 60 * 60))
-            .unwrap();
+        let start = get_time_from_offset_days(0);
         history
             .get_records(&start, &end, false)
             .iter()
@@ -381,4 +381,13 @@ impl TimerPanel {
             ui.add_space(ui.available_height());
         });
     }
+}
+
+pub fn get_time_from_offset_days(days: i64) -> SystemTime {
+    let date = Local::now().date_naive() + chrono::Duration::days(days);
+    let time = date.and_hms_opt(0, 0, 0).unwrap();
+    time.and_local_timezone(chrono::Local)
+        .single()
+        .unwrap()
+        .into()
 }
