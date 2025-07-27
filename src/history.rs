@@ -16,17 +16,10 @@ impl History {
         }
     }
 
-    pub fn add_record(
-        &mut self,
-        start_time: &SystemTime,
-        duration: u64,
-        timer_name: &str,
-        tag: &str,
-    ) {
+    pub fn add_record(&mut self, start_time: &SystemTime, duration: u64, tag: &str) {
         let key = Self::to_key(start_time);
         let record = RecordTmp {
             d: duration,
-            n: timer_name.to_string(),
             t: tag.to_string(),
         };
         self.db
@@ -66,6 +59,23 @@ impl History {
         self.db.flush().ok();
     }
 
+    pub fn modify_tag(&mut self, key: &SystemTime, tag: &str) {
+        self.db
+            .fetch_and_update(Self::to_key(key), |value| {
+                if let Some(value) = value {
+                    if let Ok(mut record) =
+                        toml::from_str::<RecordTmp>(std::str::from_utf8(&value).unwrap())
+                    {
+                        record.t = tag.to_string();
+                        return Some(toml::to_string(&record).unwrap().into_bytes());
+                    }
+                }
+                None
+            })
+            .ok();
+        self.db.flush().ok();
+    }
+
     fn to_record(key: IVec, value: IVec) -> Option<Record> {
         if let Ok(value) = std::str::from_utf8(value.as_ref()) {
             if let Ok(t) = toml::from_str::<RecordTmp>(value) {
@@ -73,10 +83,8 @@ impl History {
                 let start_time_u64 = u64::from_be_bytes(array);
                 let start_time = UNIX_EPOCH + Duration::from_secs(start_time_u64);
                 return Some(Record {
-                    start_time_u64,
                     start_time,
                     duration: t.d,
-                    timer_name: t.n,
                     tag: t.t,
                 });
             }
@@ -96,16 +104,13 @@ impl History {
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct Record {
-    pub start_time_u64: u64,
     pub start_time: SystemTime,
     pub duration: u64,
-    pub timer_name: String,
     pub tag: String,
 }
 
 #[derive(Deserialize, Serialize)]
 struct RecordTmp {
     d: u64,
-    n: String,
     t: String,
 }

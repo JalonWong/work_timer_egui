@@ -292,9 +292,9 @@ impl MainPanel {
     }
 
     fn stop(&mut self, tag: &str, history: &mut History) {
-        if let Some((duration, name)) = self.timer.stop() {
+        if let Some((duration, _)) = self.timer.stop() {
             self.total_time += duration;
-            history.add_record(self.timer.get_start_time(), duration, &name, tag);
+            history.add_record(self.timer.get_start_time(), duration, tag);
         }
     }
 

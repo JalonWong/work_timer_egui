@@ -2,13 +2,15 @@ use std::time::{Duration, SystemTime};
 
 use crate::history::{History, Record};
 use chrono::{DateTime, Local};
-use eframe::egui::{Id, Modal, RichText, Sides, Ui};
+use eframe::egui::{Id, Label, Modal, RichText, Sense, Sides, Ui};
 use egui_extras::{Column, TableBuilder};
 
 pub struct HistoryWindow {
     show: bool,
     records: Vec<Record>,
     delete_index: Option<usize>,
+    modify_index: Option<usize>,
+    modify_tag: String,
     time_window: TimeWindow,
 }
 
@@ -18,12 +20,14 @@ impl HistoryWindow {
             show: false,
             records: Vec::new(),
             delete_index: None,
-            time_window: TimeWindow::OneDay,
+            modify_index: None,
+            modify_tag: String::new(),
+            time_window: TimeWindow::Day1,
         }
     }
 
     pub fn show(&mut self, history: &History) {
-        self.time_window = TimeWindow::OneDay;
+        self.time_window = TimeWindow::Day1;
         self.refresh_records(history);
         self.show = true;
     }
@@ -36,10 +40,8 @@ impl HistoryWindow {
     fn refresh_records(&mut self, history: &History) {
         let end = SystemTime::now();
         let start = match self.time_window {
-            TimeWindow::OneDay => end
-                .checked_sub(Duration::from_secs(24 * 60 * 60))
-                .unwrap(),
-            TimeWindow::SevenDays => end
+            TimeWindow::Day1 => end.checked_sub(Duration::from_secs(24 * 60 * 60)).unwrap(),
+            TimeWindow::Day7 => end
                 .checked_sub(Duration::from_secs(7 * 24 * 60 * 60))
                 .unwrap(),
             TimeWindow::All => SystemTime::UNIX_EPOCH,
@@ -59,13 +61,13 @@ impl HistoryWindow {
                     ui.heading("History");
                     ui.add_space(20.0);
                     if ui
-                        .selectable_value(&mut self.time_window, TimeWindow::OneDay, "1 Day")
+                        .selectable_value(&mut self.time_window, TimeWindow::Day1, "1 Day")
                         .clicked()
                     {
                         self.refresh_records(history);
                     }
                     if ui
-                        .selectable_value(&mut self.time_window, TimeWindow::SevenDays, "7 Days")
+                        .selectable_value(&mut self.time_window, TimeWindow::Day7, "7 Days")
                         .clicked()
                     {
                         self.refresh_records(history);
@@ -113,7 +115,13 @@ impl HistoryWindow {
                                 ui.label(RichText::new(text).monospace());
                             });
                             row.col(|ui| {
-                                ui.label(&record.tag);
+                                if ui
+                                    .add(Label::new(&record.tag).sense(Sense::click()))
+                                    .clicked()
+                                {
+                                    self.modify_tag = record.tag.clone();
+                                    self.modify_index = Some(index);
+                                }
                             });
                             row.col(|ui| {
                                 if ui.button("\u{274E}").clicked() {
@@ -127,12 +135,13 @@ impl HistoryWindow {
                 self.close();
             }
             self.delete_record_ui(ui, history);
+            self.modify_tag_ui(ui, history);
         }
     }
 
     fn delete_record_ui(&mut self, ui: &mut Ui, history: &mut History) {
         if let Some(index) = self.delete_index {
-            let modal = Modal::new(Id::new("delete")).backdrop_color(crate::MODAL_BG);
+            let modal = Modal::new(Id::new("modal_delete")).backdrop_color(crate::MODAL_BG);
             let response = modal.show(ui.ctx(), |ui| {
                 ui.set_width(350.0);
                 ui.heading("Are you sure you want to delete this record?");
@@ -158,11 +167,46 @@ impl HistoryWindow {
             }
         }
     }
+
+    fn modify_tag_ui(&mut self, ui: &mut Ui, history: &mut History) {
+        if let Some(index) = self.modify_index {
+            let modal = Modal::new(Id::new("modal_modify_tag")).backdrop_color(crate::MODAL_BG);
+            let response = modal.show(ui.ctx(), |ui| {
+                ui.heading("Modify Tag");
+                ui.add_space(10.0);
+                ui.horizontal(|ui| {
+                    ui.add_space(10.0);
+                    ui.text_edit_singleline(&mut self.modify_tag);
+                    ui.add_space(10.0);
+                });
+                ui.add_space(10.0);
+
+                Sides::new().show(
+                    ui,
+                    |_ui| {},
+                    |ui| {
+                        if ui.button("Save").clicked() {
+                            history.modify_tag(&self.records[index].start_time, &self.modify_tag);
+                            self.records[index].tag = self.modify_tag.clone();
+                            self.modify_index = None;
+                        }
+
+                        if ui.button("Cancel").clicked() {
+                            self.modify_index = None;
+                        }
+                    },
+                );
+            });
+            if response.should_close() {
+                self.modify_index = None;
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq)]
 enum TimeWindow {
-    OneDay,
-    SevenDays,
+    Day1,
+    Day7,
     All,
 }
