@@ -1,7 +1,8 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use eframe::egui::{self, Grid, Id, Modal, Ui, vec2};
+use eframe::egui::{self, Grid, Id, Label, Modal, TextWrapMode, Ui, vec2};
+use rfd::FileDialog;
 
 use crate::setting::Setting;
 
@@ -49,6 +50,28 @@ impl SettingWindow {
                     ui.label("Audio:");
                     ui.vertical(|ui| {
                         ui.allocate_space(vec2(250.0, 0.0));
+                        ui.add(
+                            Label::new(setting.mut_audio_file().as_str())
+                                .wrap_mode(TextWrapMode::Extend),
+                        );
+                        ui.horizontal(|ui| {
+                            if ui.button("Set audio file").clicked() {
+                                if let Some(audio_file) = FileDialog::new()
+                                    .add_filter("audio", &["wav", "mp3"])
+                                    .pick_file()
+                                {
+                                    setting.mut_audio_file().clear();
+                                    setting
+                                        .mut_audio_file()
+                                        .push_str(&audio_file.display().to_string());
+                                }
+                            }
+                            if ui.button("Reset").clicked() {
+                                setting.mut_audio_file().clear();
+                                setting.mut_audio_file().push_str("assets/notify.wav");
+                            }
+                        });
+
                         let mut play_audio = setting.play_audio();
                         if ui
                             .checkbox(&mut play_audio, "Play audio when notified")
@@ -56,8 +79,8 @@ impl SettingWindow {
                         {
                             setting.set_play_audio(play_audio);
                         }
-                        ui.text_edit_singleline(setting.mut_audio_file());
                     });
+
                     ui.end_row();
 
                     const VERSION: &str = env!("CARGO_PKG_VERSION");
