@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 use sled::{Db, IVec};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::{
+    path::PathBuf,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 pub struct History {
     db: Db,
@@ -69,6 +72,24 @@ impl History {
             })
             .ok();
         self.db.flush().ok();
+    }
+
+    pub fn export_to_csv(&self, file_path: PathBuf) {
+        let mut writer = csv::Writer::from_path(file_path).unwrap();
+        for record in self.get_records(&SystemTime::UNIX_EPOCH, &SystemTime::now(), true) {
+            let dt = record
+                .start_time
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap();
+            writer
+                .write_record(&[
+                    dt.as_secs().to_string(),
+                    record.duration.to_string(),
+                    record.tag,
+                ])
+                .unwrap();
+        }
+        writer.flush().unwrap();
     }
 
     fn to_record(key: IVec, value: IVec) -> Option<Record> {

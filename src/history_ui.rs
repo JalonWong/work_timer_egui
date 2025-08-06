@@ -4,6 +4,7 @@ use crate::history::{History, Record};
 use chrono::{DateTime, Local};
 use eframe::egui::{Id, Label, Modal, RichText, Sense, Sides, Ui};
 use egui_extras::{Column, TableBuilder};
+use rfd::FileDialog;
 
 pub struct HistoryWindow {
     show: bool,
@@ -75,6 +76,14 @@ impl HistoryWindow {
                         .clicked()
                     {
                         self.refresh_records(history);
+                    }
+                    ui.add_space(70.0);
+                    if ui.button("Export to CSV").clicked() {
+                        if let Some(csv_file) =
+                            FileDialog::new().add_filter("CSV", &["csv"]).save_file()
+                        {
+                            history.export_to_csv(csv_file);
+                        }
                     }
                 });
                 ui.separator();
