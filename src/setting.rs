@@ -123,10 +123,6 @@ impl Setting {
         self.cache_info.maximized = maximized;
     }
 
-    pub fn file_name(&self) -> &Path {
-        &self.file_name
-    }
-
     pub fn tags(&self) -> &[String] {
         self.info.tags.as_slice()
     }

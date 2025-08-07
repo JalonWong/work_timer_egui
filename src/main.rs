@@ -132,7 +132,7 @@ impl MyEguiApp {
         v.override_text_color = Some(Color32::from_rgb(20, 20, 20));
         cc.egui_ctx.set_visuals_of(Theme::Light, v);
 
-        let setting_window = SettingWindow::new(setting.file_name());
+        let setting_window = SettingWindow::new();
 
         cc.egui_ctx.set_theme(setting.theme());
 

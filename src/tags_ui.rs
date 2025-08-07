@@ -92,7 +92,7 @@ impl TagsWindow {
         if self.reorder {
             let response = ui
                 .dnd_drag_source(item_id, i, |ui| {
-                    ui.label(format!("\u{2B0D} {}", tag));
+                    ui.label(format!("\u{2B0D} {tag}"));
                 })
                 .response;
             if let (Some(pointer), Some(hovered_payload)) = (
@@ -122,11 +122,9 @@ impl TagsWindow {
                     to = Some(insert_row_idx);
                 }
             }
-        } else {
-            if ui.add(Button::new(tag).frame(false)).clicked() {
-                self.modify_tag = tag.to_string();
-                self.modify_index = Some(i);
-            }
+        } else if ui.add(Button::new(tag).frame(false)).clicked() {
+            self.modify_tag = tag.to_string();
+            self.modify_index = Some(i);
         }
         (from, to)
     }

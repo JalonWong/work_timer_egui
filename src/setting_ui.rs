@@ -1,22 +1,15 @@
-use std::path::{Path, PathBuf};
-use std::process::Command;
-
 use eframe::egui::{self, Grid, Id, Label, Modal, TextWrapMode, Ui, vec2};
 use rfd::FileDialog;
 
 use crate::{MyColor, setting::Setting};
 
 pub struct SettingWindow {
-    file_name: PathBuf,
     show: bool,
 }
 
 impl SettingWindow {
-    pub fn new(file_name: &Path) -> Self {
-        Self {
-            file_name: file_name.to_path_buf(),
-            show: false,
-        }
+    pub fn new() -> Self {
+        Self { show: false }
     }
 
     pub fn show(&mut self) {
@@ -37,11 +30,6 @@ impl SettingWindow {
                 let grid = Grid::new("my_grid").striped(true).spacing(vec2(8.0, 14.0));
                 grid.show(ui, |ui| {
                     ui.set_width(200.0);
-                    ui.label("Config file:");
-                    if ui.button("Open").clicked() {
-                        open_file(&self.file_name);
-                    }
-                    ui.end_row();
 
                     ui.label("Theme:");
                     egui::widgets::global_theme_preference_buttons(ui);
@@ -105,19 +93,4 @@ impl SettingWindow {
             }
         }
     }
-}
-
-fn open_file(file_path: &Path) {
-    let file_path = file_path.to_str().unwrap();
-    #[cfg(target_os = "windows")]
-    Command::new("cmd")
-        .args(["/C", "start", "", file_path])
-        .spawn()
-        .ok();
-
-    #[cfg(target_os = "linux")]
-    Command::new("xdg-open").arg(file_path).spawn().ok();
-
-    #[cfg(target_os = "macos")]
-    Command::new("open").arg(file_path).spawn().ok();
 }
