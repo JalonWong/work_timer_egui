@@ -1,6 +1,7 @@
 use rodio::OutputStreamBuilder;
 use std::fs::{self, File};
 use std::io::BufReader;
+use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{self, JoinHandle};
@@ -19,9 +20,9 @@ impl Audio {
         }
     }
 
-    pub fn schedule_notify(&mut self, name: &str, after_secs: u64) {
-        let name = if let Ok(true) = fs::exists(name) {
-            name.to_string()
+    pub fn schedule_notify(&mut self, name: impl AsRef<Path>, after_secs: u64) {
+        let name = if let Ok(true) = fs::exists(name.as_ref()) {
+            name.as_ref().to_path_buf()
         } else {
             return;
         };

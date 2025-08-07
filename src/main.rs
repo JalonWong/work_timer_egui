@@ -23,7 +23,7 @@ use history_ui::HistoryWindow;
 use left_panel_ui::LeftPanel;
 use setting::Setting;
 use setting_ui::SettingWindow;
-use std::{fs, time::SystemTime};
+use std::{fs, path::PathBuf, time::SystemTime};
 use tags_ui::TagsWindow;
 use timer::{Status, Timer};
 use timers_ui::TimersWindow;
@@ -36,14 +36,13 @@ fn main() -> eframe::Result {
     let setting = Setting::new();
 
     #[cfg(debug_assertions)]
-    let image = "assets/timer.png";
+    let app_path = PathBuf::from("./");
     #[cfg(not(debug_assertions))]
-    let image = {
+    let app_path = {
         let exe_dir = std::env::current_exe().unwrap();
-        let exe_dir = exe_dir.parent().unwrap();
-        exe_dir.join("assets/timer.png")
+        exe_dir.parent().unwrap().to_path_buf()
     };
-    let png_bytes = fs::read(image).unwrap();
+    let png_bytes = fs::read(app_path.join("assets/timer.png")).unwrap();
     let icon = eframe::icon_data::from_png_bytes(&png_bytes).unwrap();
     let mut viewport = egui::ViewportBuilder::default()
         .with_min_inner_size([400.0, 330.0])
@@ -64,7 +63,7 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "Work Timer",
         options,
-        Box::new(|cc| Ok(Box::new(MyEguiApp::new(cc, setting)))),
+        Box::new(|cc| Ok(Box::new(MyEguiApp::new(cc, setting, app_path)))),
     )
 }
 
@@ -113,7 +112,7 @@ impl eframe::App for MyEguiApp {
 }
 
 impl MyEguiApp {
-    fn new(cc: &eframe::CreationContext<'_>, setting: Setting) -> Self {
+    fn new(cc: &eframe::CreationContext<'_>, setting: Setting, app_path: PathBuf) -> Self {
         // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
         // Restore app state using cc.storage (requires the "persistence" feature).
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
@@ -147,7 +146,11 @@ impl MyEguiApp {
         let history = History::new();
 
         Self {
-            main_panel: MainPanel::new(Self::init_total_time(&history), setting.tag_index()),
+            main_panel: MainPanel::new(
+                Self::init_total_time(&history),
+                setting.tag_index(),
+                app_path,
+            ),
             left_panel: LeftPanel::new(
                 110.0,
                 &[
@@ -221,10 +224,11 @@ struct MainPanel {
     audio: Audio,
     tag_index: usize,
     on_top: bool,
+    app_path: PathBuf,
 }
 
 impl MainPanel {
-    fn new(total_time: u64, tag_index: usize) -> Self {
+    fn new(total_time: u64, tag_index: usize, app_path: PathBuf) -> Self {
         Self {
             total_time,
             timer: Timer::new(),
@@ -232,6 +236,7 @@ impl MainPanel {
             audio: Audio::new(),
             tag_index,
             on_top: false,
+            app_path,
         }
     }
 
@@ -306,8 +311,13 @@ impl MainPanel {
         self.timer_panel.set_info(text, t.limit_time);
         self.timer.start(t);
         if t.notify
-            && let Some(name) = audio_file
+            && let Some(audio_file) = audio_file
         {
+            let name = if audio_file.starts_with("assets/") {
+                self.app_path.join(audio_file)
+            } else {
+                PathBuf::from(audio_file)
+            };
             self.audio.schedule_notify(name, t.limit_time * 60);
         }
     }
