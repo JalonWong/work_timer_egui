@@ -183,9 +183,11 @@ impl TimersWindow {
                         }
                         ui.label("minutes");
                     });
-                    ui.checkbox(&mut timer.for_work, "Work timer");
-                    ui.checkbox(&mut timer.count_up, "Count up");
-                    ui.checkbox(&mut timer.notify, "Notify when timeout");
+                    ui.horizontal(|ui| {
+                        ui.checkbox(&mut timer.for_work, "Work timer");
+                        ui.checkbox(&mut timer.count_up, "Count up");
+                        ui.checkbox(&mut timer.notify, "Notify when timeout");
+                    });
                     if ui.button("Delete").clicked() {
                         self.delete_index = Some(i);
                     }
