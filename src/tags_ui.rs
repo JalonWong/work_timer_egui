@@ -1,11 +1,12 @@
 use std::sync::Arc;
 
-use eframe::egui::{self, Color32, Frame, Id, Modal, Sides, Ui, vec2};
+use eframe::egui::{self, Button, Color32, Frame, Id, Modal, Sides, Ui, vec2};
 
 use crate::setting::Setting;
 
 pub struct TagsWindow {
     show: bool,
+    reorder: bool,
     modify_index: Option<usize>,
     modify_tag: String,
 }
@@ -14,12 +15,14 @@ impl TagsWindow {
     pub fn new() -> Self {
         Self {
             show: false,
+            reorder: false,
             modify_index: None,
             modify_tag: String::new(),
         }
     }
 
     pub fn show(&mut self) {
+        self.reorder = false;
         self.show = true;
     }
 
@@ -36,12 +39,18 @@ impl TagsWindow {
                         self.modify_tag.clear();
                         self.modify_index = Some(usize::MAX);
                     }
+                    if ui
+                        .add(Button::new("Reorder").selected(self.reorder))
+                        .clicked()
+                    {
+                        self.reorder = !self.reorder;
+                    }
                 });
                 ui.separator();
 
                 let frame = Frame::default().inner_margin(4.0);
                 let (_, dropped_payload) = ui.dnd_drop_zone::<usize, ()>(frame, |ui| {
-                    ui.set_min_size(vec2(64.0, 64.0));
+                    ui.set_min_size(vec2(180.0, 64.0));
                     for (i, tag) in setting.tags().iter().enumerate() {
                         if let (Some(a), Some(b)) = self.item_ui(ui, i, tag) {
                             from = Some(a);
@@ -79,16 +88,11 @@ impl TagsWindow {
         let mut from: Option<Arc<usize>> = None;
         let mut to: Option<usize> = None;
 
-        let item_id = Id::new(("tags", i));
-        ui.horizontal(|ui| {
-            if ui.button("\u{270F}").clicked() {
-                self.modify_tag = tag.to_string();
-                self.modify_index = Some(i);
-            }
-
+        let item_id = Id::new(("tags", tag, i));
+        if self.reorder {
             let response = ui
                 .dnd_drag_source(item_id, i, |ui| {
-                    ui.label(tag);
+                    ui.label(format!("\u{2B0D} {}", tag));
                 })
                 .response;
             if let (Some(pointer), Some(hovered_payload)) = (
@@ -118,7 +122,12 @@ impl TagsWindow {
                     to = Some(insert_row_idx);
                 }
             }
-        });
+        } else {
+            if ui.add(Button::new(tag).frame(false)).clicked() {
+                self.modify_tag = tag.to_string();
+                self.modify_index = Some(i);
+            }
+        }
         (from, to)
     }
 
