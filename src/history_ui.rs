@@ -1,6 +1,9 @@
 use std::time::SystemTime;
 
-use crate::history::{History, Record};
+use crate::{
+    MyColor,
+    history::{History, Record},
+};
 use chrono::{DateTime, Local};
 use eframe::egui::{Id, Label, Modal, RichText, Sense, Sides, Ui};
 use egui_extras::{Column, TableBuilder};
@@ -50,7 +53,7 @@ impl HistoryWindow {
 
     pub fn ui(&mut self, ui: &mut Ui, history: &mut History) {
         if self.show {
-            let modal = Modal::new(Id::new("history")).backdrop_color(crate::MODAL_BG);
+            let modal = Modal::new(Id::new("history")).backdrop_color(MyColor::MODAL_BG);
             let response = modal.show(ui.ctx(), |ui| {
                 if let Some(r) = crate::get_viewport_inner_rect(ui.ctx()) {
                     ui.set_max_height(r.height() - 45.0);
@@ -148,7 +151,7 @@ impl HistoryWindow {
 
     fn delete_record_ui(&mut self, ui: &mut Ui, history: &mut History) {
         if let Some(index) = self.delete_index {
-            let modal = Modal::new(Id::new("modal_delete")).backdrop_color(crate::MODAL_BG);
+            let modal = Modal::new(Id::new("modal_delete")).backdrop_color(MyColor::MODAL_BG);
             let response = modal.show(ui.ctx(), |ui| {
                 ui.set_width(350.0);
                 ui.heading("Are you sure you want to delete this record?");
@@ -177,7 +180,7 @@ impl HistoryWindow {
 
     fn modify_tag_ui(&mut self, ui: &mut Ui, history: &mut History) {
         if let Some(index) = self.modify_index {
-            let modal = Modal::new(Id::new("history_modify_tag")).backdrop_color(crate::MODAL_BG);
+            let modal = Modal::new(Id::new("history_modify_tag")).backdrop_color(MyColor::MODAL_BG);
             let response = modal.show(ui.ctx(), |ui| {
                 ui.heading("Modify Tag");
                 ui.add_space(10.0);

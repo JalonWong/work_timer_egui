@@ -1,12 +1,9 @@
-use crate::history::History;
+use crate::{MyColor, history::History};
 
 use chrono::{DateTime, Days, Local, NaiveDate};
 use eframe::egui::{Id, Modal, Ui};
 use egui_plot::{AxisHints, Bar, BarChart, Legend, Plot};
-use std::{
-    collections::HashMap,
-    time::SystemTime,
-};
+use std::{collections::HashMap, time::SystemTime};
 
 pub struct ChartWindow {
     show: bool,
@@ -91,7 +88,7 @@ impl ChartWindow {
 
     pub fn ui(&mut self, ui: &mut Ui, history: &History) {
         if self.show {
-            let modal = Modal::new(Id::new("chart")).backdrop_color(crate::MODAL_BG);
+            let modal = Modal::new(Id::new("chart")).backdrop_color(MyColor::MODAL_BG);
             let response = modal.show(ui.ctx(), |ui| {
                 if let Some(r) = crate::get_viewport_inner_rect(ui.ctx()) {
                     ui.set_height(r.height() - 45.0);

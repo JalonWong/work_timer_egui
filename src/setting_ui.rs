@@ -4,7 +4,7 @@ use std::process::Command;
 use eframe::egui::{self, Grid, Id, Label, Modal, TextWrapMode, Ui, vec2};
 use rfd::FileDialog;
 
-use crate::setting::Setting;
+use crate::{MyColor, setting::Setting};
 
 pub struct SettingWindow {
     file_name: PathBuf,
@@ -29,7 +29,7 @@ impl SettingWindow {
 
     pub fn ui(&mut self, ui: &mut Ui, setting: &mut Setting) {
         if self.show {
-            let modal = Modal::new(Id::new("setting")).backdrop_color(crate::MODAL_BG);
+            let modal = Modal::new(Id::new("setting")).backdrop_color(MyColor::MODAL_BG);
             let response = modal.show(ui.ctx(), |ui| {
                 ui.heading("Setting");
                 ui.separator();

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use eframe::egui::{self, Button, Color32, Frame, Id, Modal, Sides, Ui, vec2};
 
-use crate::setting::Setting;
+use crate::{MyColor, setting::Setting};
 
 pub struct TagsWindow {
     show: bool,
@@ -31,7 +31,7 @@ impl TagsWindow {
             let mut from = None;
             let mut to = None;
 
-            let modal = Modal::new(Id::new("tags")).backdrop_color(crate::MODAL_BG);
+            let modal = Modal::new(Id::new("tags")).backdrop_color(MyColor::MODAL_BG);
             let response = modal.show(ui.ctx(), |ui| {
                 ui.horizontal(|ui| {
                     ui.heading("Tags");
@@ -133,7 +133,7 @@ impl TagsWindow {
 
     fn modify_tag_ui(&mut self, ui: &mut Ui, setting: &mut Setting) {
         if let Some(index) = self.modify_index {
-            let modal = Modal::new(Id::new("tags_modify_tag")).backdrop_color(crate::MODAL_BG);
+            let modal = Modal::new(Id::new("tags_modify_tag")).backdrop_color(MyColor::MODAL_BG);
             let response = modal.show(ui.ctx(), |ui| {
                 let title = if index == usize::MAX {
                     "New Tag"

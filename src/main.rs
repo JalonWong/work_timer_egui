@@ -28,8 +28,6 @@ use tags_ui::TagsWindow;
 
 use crate::setting::TimerSetting;
 
-const MODAL_BG: Color32 = Color32::from_rgba_premultiplied(70, 70, 70, 225);
-
 fn main() -> eframe::Result {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
@@ -343,27 +341,11 @@ impl TimerPanel {
         }
     }
 
-    fn get_red(&self, ui: &mut Ui) -> Color32 {
-        if ui.ctx().theme() == Theme::Dark {
-            Color32::from_rgb(140, 50, 50)
-        } else {
-            Color32::from_rgb(255, 120, 110)
-        }
-    }
-
-    fn get_green(&self, ui: &mut Ui) -> Color32 {
-        if ui.ctx().theme() == Theme::Dark {
-            Color32::from_rgb(40, 90, 60)
-        } else {
-            Color32::from_rgb(140, 235, 130)
-        }
-    }
-
     fn change_color(&mut self, ui: &mut Ui) {
         self.frame.fill = match self.status {
             Status::Stopped => Color32::TRANSPARENT,
-            Status::Started => self.get_green(ui),
-            Status::TimeOut => self.get_red(ui),
+            Status::Started => MyColor::green(ui),
+            Status::TimeOut => MyColor::red(ui),
         };
     }
 
@@ -398,4 +380,36 @@ pub fn get_time_from_offset_days(days: i64) -> SystemTime {
         .single()
         .unwrap()
         .into()
+}
+
+// ----------------------------------------------------------------------------
+
+struct MyColor {}
+
+impl MyColor {
+    const MODAL_BG: Color32 = Color32::from_rgba_premultiplied(70, 70, 70, 225);
+
+    fn red(ui: &mut Ui) -> Color32 {
+        if ui.ctx().theme() == Theme::Dark {
+            Color32::from_rgb(140, 50, 50)
+        } else {
+            Color32::from_rgb(255, 120, 110)
+        }
+    }
+
+    fn green(ui: &mut Ui) -> Color32 {
+        if ui.ctx().theme() == Theme::Dark {
+            Color32::from_rgb(40, 90, 60)
+        } else {
+            Color32::from_rgb(140, 235, 130)
+        }
+    }
+
+    fn background(ui: &mut Ui) -> Color32 {
+        if ui.ctx().theme() == Theme::Dark {
+            Color32::from_rgb(40, 40, 40)
+        } else {
+            Color32::from_rgb(200, 200, 200)
+        }
+    }
 }
