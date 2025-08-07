@@ -7,6 +7,7 @@ mod history_ui;
 mod left_panel_ui;
 mod setting;
 mod setting_ui;
+mod tags_ui;
 mod timer;
 
 use audio::Audio;
@@ -23,6 +24,7 @@ use setting::Setting;
 use setting_ui::SettingWindow;
 use std::{fs, time::SystemTime};
 use timer::{Status, Timer};
+use tags_ui::TagsWindow;
 
 use crate::setting::TimerSetting;
 
@@ -66,6 +68,7 @@ struct MyEguiApp {
     history: History,
     history_window: HistoryWindow,
     chart_window: ChartWindow,
+    tags_window: TagsWindow,
 }
 
 impl eframe::App for MyEguiApp {
@@ -76,7 +79,8 @@ impl eframe::App for MyEguiApp {
                 match btn {
                     0 => self.chart_window.show(&self.history),
                     1 => self.history_window.show(&self.history),
-                    2 => self.setting_window.show(),
+                    2 => self.tags_window.show(),
+                    3 => self.setting_window.show(),
                     _ => (),
                 }
             }
@@ -89,6 +93,7 @@ impl eframe::App for MyEguiApp {
             if self.setting_window.is_show() {
                 self.main_panel.timer_panel.change_color(ui);
             }
+            self.tags_window.ui(ui, &mut self.setting);
             if ctx.input(|i| i.viewport().close_requested()) {
                 self.on_close(ctx);
             }
@@ -137,6 +142,7 @@ impl MyEguiApp {
                 &[
                     ("\u{1F4CA}", "Chart"),
                     ("\u{1F4C4}", "History"),
+                    ("\u{1F3F7}", "Tags"),
                     ("\u{26ED}", "Setting"),
                 ],
             ),
@@ -145,6 +151,7 @@ impl MyEguiApp {
             history,
             history_window: HistoryWindow::new(),
             chart_window: ChartWindow::new(),
+            tags_window: TagsWindow::new(),
         }
     }
 

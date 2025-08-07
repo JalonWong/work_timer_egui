@@ -131,6 +131,10 @@ impl Setting {
         self.info.tags.as_slice()
     }
 
+    pub fn mut_tags(&mut self) -> &mut Vec<String> {
+        &mut self.info.tags
+    }
+
     pub fn theme(&self) -> Theme {
         self.info.theme
     }

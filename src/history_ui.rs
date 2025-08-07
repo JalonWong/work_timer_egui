@@ -177,7 +177,7 @@ impl HistoryWindow {
 
     fn modify_tag_ui(&mut self, ui: &mut Ui, history: &mut History) {
         if let Some(index) = self.modify_index {
-            let modal = Modal::new(Id::new("modal_modify_tag")).backdrop_color(crate::MODAL_BG);
+            let modal = Modal::new(Id::new("history_modify_tag")).backdrop_color(crate::MODAL_BG);
             let response = modal.show(ui.ctx(), |ui| {
                 ui.heading("Modify Tag");
                 ui.add_space(10.0);
