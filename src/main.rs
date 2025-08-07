@@ -305,10 +305,10 @@ impl MainPanel {
     fn start(&mut self, text: String, t: &TimerSetting, audio_file: Option<&str>) {
         self.timer_panel.set_info(text, t.limit_time);
         self.timer.start(t);
-        if t.notify {
-            if let Some(name) = audio_file {
-                self.audio.schedule_notify(name, t.limit_time * 60);
-            }
+        if t.notify
+            && let Some(name) = audio_file
+        {
+            self.audio.schedule_notify(name, t.limit_time * 60);
         }
     }
 

@@ -60,13 +60,12 @@ impl History {
     pub fn modify_tag(&mut self, key: &SystemTime, tag: &str) {
         self.db
             .fetch_and_update(Self::to_key(key), |value| {
-                if let Some(value) = value {
-                    if let Ok(mut record) =
+                if let Some(value) = value
+                    && let Ok(mut record) =
                         toml::from_str::<RecordTmp>(std::str::from_utf8(value).unwrap())
-                    {
-                        record.t = tag.to_string();
-                        return Some(toml::to_string(&record).unwrap().into_bytes());
-                    }
+                {
+                    record.t = tag.to_string();
+                    return Some(toml::to_string(&record).unwrap().into_bytes());
                 }
                 None
             })
@@ -93,17 +92,17 @@ impl History {
     }
 
     fn to_record(key: IVec, value: IVec) -> Option<Record> {
-        if let Ok(value) = std::str::from_utf8(value.as_ref()) {
-            if let Ok(t) = toml::from_str::<RecordTmp>(value) {
-                let array: [u8; 8] = key.as_ref().try_into().unwrap();
-                let start_time_u64 = u64::from_be_bytes(array);
-                let start_time = UNIX_EPOCH + Duration::from_secs(start_time_u64);
-                return Some(Record {
-                    start_time,
-                    duration: t.d,
-                    tag: t.t,
-                });
-            }
+        if let Ok(value) = std::str::from_utf8(value.as_ref())
+            && let Ok(t) = toml::from_str::<RecordTmp>(value)
+        {
+            let array: [u8; 8] = key.as_ref().try_into().unwrap();
+            let start_time_u64 = u64::from_be_bytes(array);
+            let start_time = UNIX_EPOCH + Duration::from_secs(start_time_u64);
+            return Some(Record {
+                start_time,
+                duration: t.d,
+                tag: t.t,
+            });
         }
         None
     }
