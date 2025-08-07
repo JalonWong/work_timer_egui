@@ -151,7 +151,7 @@ impl HistoryWindow {
 
     fn delete_record_ui(&mut self, ui: &mut Ui, history: &mut History) {
         if let Some(index) = self.delete_index {
-            let modal = Modal::new(Id::new("modal_delete")).backdrop_color(MyColor::MODAL_BG);
+            let modal = Modal::new(Id::new("history_delete")).backdrop_color(MyColor::MODAL_BG);
             let response = modal.show(ui.ctx(), |ui| {
                 ui.set_width(350.0);
                 ui.heading("Are you sure you want to delete this record?");

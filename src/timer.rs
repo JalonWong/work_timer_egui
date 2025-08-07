@@ -54,7 +54,7 @@ impl Timer {
 
     pub fn notify(&self) -> bool {
         if let Some(s) = self.setting.as_ref() {
-            s.notify()
+            s.notify
         } else {
             false
         }

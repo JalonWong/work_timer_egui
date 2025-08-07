@@ -147,6 +147,14 @@ impl Setting {
         &self.info.timer_list
     }
 
+    pub fn add_timer(&mut self, timer: TimerSetting) {
+        self.info.timer_list.push(timer);
+    }
+
+    pub fn mut_timer_list(&mut self) -> &mut Vec<TimerSetting> {
+        &mut self.info.timer_list
+    }
+
     pub fn audio_file(&self) -> Option<&str> {
         if self.info.play_audio {
             Some(&self.info.audio_file)
@@ -251,11 +259,18 @@ pub struct TimerSetting {
     pub limit_time: u64,
     pub for_work: bool,
     pub count_up: bool,
-    notify: bool,
+    pub notify: bool,
 }
 
 impl TimerSetting {
-    pub fn notify(&self) -> bool {
-        self.notify
+    pub fn new() -> Self {
+        Self {
+            name: "new".to_string(),
+            icon: String::new(),
+            limit_time: 1,
+            for_work: false,
+            count_up: false,
+            notify: false,
+        }
     }
 }
