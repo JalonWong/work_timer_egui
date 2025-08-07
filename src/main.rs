@@ -35,7 +35,15 @@ fn main() -> eframe::Result {
 
     let setting = Setting::new();
 
-    let png_bytes = fs::read("assets/timer.png").unwrap();
+    #[cfg(debug_assertions)]
+    let image = "assets/timer.png";
+    #[cfg(not(debug_assertions))]
+    let image = {
+        let exe_dir = std::env::current_exe().unwrap();
+        let exe_dir = exe_dir.parent().unwrap();
+        exe_dir.join("assets/timer.png")
+    };
+    let png_bytes = fs::read(image).unwrap();
     let icon = eframe::icon_data::from_png_bytes(&png_bytes).unwrap();
     let mut viewport = egui::ViewportBuilder::default()
         .with_min_inner_size([400.0, 330.0])
