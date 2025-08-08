@@ -36,10 +36,10 @@ impl Timer {
 
     pub fn stop(&mut self) -> Option<(u64, String)> {
         self.status = Status::Stopped;
-        if let Some(s) = self.setting.take() {
-            if s.for_work {
-                return Some((self.count, s.name));
-            }
+        if let Some(s) = self.setting.take()
+            && s.for_work
+        {
+            return Some((self.count, s.name));
         }
         None
     }

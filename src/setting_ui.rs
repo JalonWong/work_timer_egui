@@ -43,16 +43,15 @@ impl SettingWindow {
                                 .wrap_mode(TextWrapMode::Extend),
                         );
                         ui.horizontal(|ui| {
-                            if ui.button("Set audio file").clicked() {
-                                if let Some(audio_file) = FileDialog::new()
+                            if ui.button("Set audio file").clicked()
+                                && let Some(audio_file) = FileDialog::new()
                                     .add_filter("audio", &["wav", "mp3"])
                                     .pick_file()
-                                {
-                                    setting.mut_audio_file().clear();
-                                    setting
-                                        .mut_audio_file()
-                                        .push_str(&audio_file.display().to_string());
-                                }
+                            {
+                                setting.mut_audio_file().clear();
+                                setting
+                                    .mut_audio_file()
+                                    .push_str(&audio_file.display().to_string());
                             }
                             if ui.button("Reset").clicked() {
                                 setting.mut_audio_file().clear();

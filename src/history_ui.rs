@@ -81,12 +81,11 @@ impl HistoryWindow {
                         self.refresh_records(history);
                     }
                     ui.add_space(70.0);
-                    if ui.button("Export to CSV").clicked() {
-                        if let Some(csv_file) =
+                    if ui.button("Export to CSV").clicked()
+                        && let Some(csv_file) =
                             FileDialog::new().add_filter("CSV", &["csv"]).save_file()
-                        {
-                            history.export_to_csv(csv_file);
-                        }
+                    {
+                        history.export_to_csv(csv_file);
                     }
                 });
                 ui.separator();
