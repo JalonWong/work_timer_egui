@@ -31,17 +31,9 @@ use timers_ui::TimersWindow;
 use crate::setting::TimerSetting;
 
 fn main() -> eframe::Result {
-    env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
-
     let setting = Setting::new();
 
-    #[cfg(debug_assertions)]
-    let app_path = PathBuf::from("./");
-    #[cfg(not(debug_assertions))]
-    let app_path = {
-        let exe_dir = std::env::current_exe().unwrap();
-        exe_dir.parent().unwrap().to_path_buf()
-    };
+    let app_path = get_app_path();
     let png_bytes = fs::read(app_path.join("assets/timer.png")).unwrap();
     let icon = eframe::icon_data::from_png_bytes(&png_bytes).unwrap();
     let mut viewport = egui::ViewportBuilder::default()
@@ -65,6 +57,27 @@ fn main() -> eframe::Result {
         options,
         Box::new(|cc| Ok(Box::new(MyEguiApp::new(cc, setting, app_path)))),
     )
+}
+
+fn get_app_path() -> PathBuf {
+    #[cfg(debug_assertions)]
+    let app_path = PathBuf::from("./");
+    #[cfg(all(not(debug_assertions), not(target_os = "macos")))]
+    let app_path = {
+        let exe_dir = std::env::current_exe().unwrap();
+        exe_dir.parent().unwrap().to_path_buf()
+    };
+    #[cfg(all(not(debug_assertions), target_os = "macos"))]
+    let app_path = {
+        let exe_dir = std::env::current_exe().unwrap();
+        exe_dir
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("Resources")
+    };
+    app_path
 }
 
 struct MyEguiApp {

@@ -16,10 +16,11 @@ if __name__ == "__main__":
     subprocess.run([PYTHON, "--version"])
     subprocess.run("cargo --version".split(), check=True)
 
+    subprocess.run("cargo install cargo-bundle".split(), check=True)
     subprocess.run("cargo fetch".split(), check=True)
     subprocess.run("cargo build --release".split(), check=True)
 
-    if SYSTEM == "windows" or SYSTEM == "osx":
+    if SYSTEM == "windows":
         import zipfile
 
         arch = "arm64" if ARCH == "arm64" else "amd64"
@@ -28,6 +29,18 @@ if __name__ == "__main__":
             files = glob("assets/**")
             for file in files:
                 zip_f.write(file)
+    elif SYSTEM == "osx":
+        subprocess.run("cargo bundle --release".split(), check=True)
+
+        import zipfile
+
+        arch = "arm64" if ARCH == "arm64" else "amd64"
+        with zipfile.ZipFile(f"work-timer-{SYSTEM}-{arch}.zip", "w", zipfile.ZIP_DEFLATED) as zip_f:
+            files = glob(
+                "target/release/bundle/osx/WorkTimer.app/**", recursive=True, include_hidden=True
+            )
+            for file in files:
+                zip_f.write(file, file.replace("target/release/bundle/osx/", ""))
     elif SYSTEM == "linux":
         import tarfile
 
