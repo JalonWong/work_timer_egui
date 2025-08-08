@@ -157,18 +157,27 @@ impl TimersWindow {
                 ui.vertical(|ui| {
                     ui.horizontal(|ui| {
                         ui.add_sized([15.0, 20.0], egui::TextEdit::singleline(&mut timer.icon));
-                        if ui.text_edit_singleline(&mut timer_info.name).lost_focus() {
+                        if ui
+                            .add_sized([240.0, 20.0], egui::TextEdit::singleline(&mut timer.name))
+                            .lost_focus()
+                        {
                             if timer_info.name.is_empty() {
                                 timer_info.name = timer.name.clone();
                             } else {
                                 timer.name = timer_info.name.clone();
                             }
                         }
+                        if ui.button("Delete").clicked() {
+                            self.delete_index = Some(i);
+                        }
                     });
                     ui.horizontal(|ui| {
                         ui.label("Limit time:");
                         if ui
-                            .text_edit_singleline(&mut timer_info.limit_time)
+                            .add_sized(
+                                [100.0, 20.0],
+                                egui::TextEdit::singleline(&mut timer_info.limit_time),
+                            )
                             .lost_focus()
                         {
                             if let Ok(mut value) = timer_info.limit_time.parse::<u64>() {
@@ -188,9 +197,6 @@ impl TimersWindow {
                         ui.checkbox(&mut timer.count_up, "Count up");
                         ui.checkbox(&mut timer.notify, "Notify when timeout");
                     });
-                    if ui.button("Delete").clicked() {
-                        self.delete_index = Some(i);
-                    }
                 });
             });
     }
