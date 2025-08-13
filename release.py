@@ -17,7 +17,6 @@ if __name__ == "__main__":
     subprocess.run("cargo --version".split(), check=True)
 
     subprocess.run("cargo install cargo-bundle".split(), check=True)
-    subprocess.run("cargo fetch".split(), check=True)
     subprocess.run("cargo build --release".split(), check=True)
 
     if SYSTEM == "windows":
